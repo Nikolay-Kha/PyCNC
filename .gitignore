@@ -1,0 +1,7 @@
+*.pyc
+__pycache__
+.iws
+workspace.xml
+tasks.xml
+.idea/dictionaries
+pycnc.tar.bz2
