@@ -15,19 +15,19 @@ perfect choice for easy development of this project.
 
 Video demo - [YouTube video](https://youtu.be/vcedo59raS4)
 
-#Current command support
+# Current command support
 G0, G1, G4, G20, G21, G28, G90, G91, G92, M2, M3, M5, M30  
 Commands can be easily added, see [gmachine.py](./gmachine.py) file.
 
-#Config
+# Config
 All config is stored in [config.py](./config.py) and contains hardware properties, limitations
 and pin names for hardware control.
 
-#Hardware
+# Hardware
 Currently, this project supports Raspberry Pi 1-3. But there is a way to add new boards.
 See [hal.py](./hal.py) file.
 
-#Performance notice
+# Performance notice
 Pure Python interpreter wouldn't provide great performance for high speed machines.
 Overspeeding setting causes motors mispulses and probably lose of trajectory. According 
 to my tests, Raspberry Pi 2 can handle axises with 400 pulses on mm with top velocity ~800 mm 
@@ -44,16 +44,16 @@ sudo tar xvf pypy2-v5.7.1-linux-armhf-raspbian.tar.bz2 --directory /opt/pypy/ --
 sudo ln -s /opt/pypy/bin/pypy /usr/local/bin/pypy
 ```
 
-#Dependencies
+# Dependencies
 Nothing. Just pure Python code.
 
-#GCode simulation
+# GCode simulation
 Just a link to a nice web software for gcode files emulation (very helpful for manual creating of
 gcode files): [https://nraynaud.github.io/webgcode/](https://nraynaud.github.io/webgcode/)
 
-#License
+# License
 see [LICENSE](./LICENSE) file.
 
-#Author
+# Author
 Nikolay Khabarov
 
