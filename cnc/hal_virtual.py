@@ -89,3 +89,9 @@ def join():
     """ Wait till motors work.
     """
     logging.info("hal join()")
+
+
+def deinit():
+    """ De-initialise.
+    """
+    logging.info("hal deinit()")

@@ -22,6 +22,7 @@ US_IN_SECONDS = 1000000
 
 gpio = rpgpio.GPIO()
 dma = rpgpio.DMAGPIO()
+pwm = rpgpio.DMAPWM()
 
 STEP_PIN_MASK_X = 1 << STEPPER_STEP_PIN_X
 STEP_PIN_MASK_Y = 1 << STEPPER_STEP_PIN_Y
@@ -40,6 +41,8 @@ def init():
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
+    gpio.init(SPINDLE_PWM_PIN, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.clear(SPINDLE_PWM_PIN)
 
     # calibration
     gpio.set(STEPPER_DIR_PIN_X)
@@ -71,10 +74,13 @@ def init():
 
 def spindle_control(percent):
     """ Spindle control implementation.
-    :param percent: Spindle speed in percent.
+    :param percent: Spindle speed in percent. If 0, stop the spindle.
     """
-    # TODO spindle control.
-    logging.info("TODO spindle control: {}%".format(percent))
+    logging.info("spindle control: {}%".format(percent))
+    if percent > 0:
+        pwm.add_pin(SPINDLE_PWM_PIN, percent)
+    else:
+        pwm.remove_pin(SPINDLE_PWM_PIN)
 
 
 def move_linear(delta, velocity):
@@ -147,6 +153,14 @@ def move_linear(delta, velocity):
 def join():
     """ Wait till motors work.
     """
+    logging.info("hal join()")
     # wait till dma works
     while dma.is_active():
         time.sleep(0.01)
+
+
+def deinit():
+    """ De-initialize hardware.
+    """
+    join()
+    pwm.remove_all()

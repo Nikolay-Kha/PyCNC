@@ -29,6 +29,11 @@
 #        """ Wait till motors work.
 #        """
 #        do_something()
+#
+#    def deinit():
+#        """ De-initialise hal, stop any hardware.
+#        """
+#        do_something()
 
 
 # check which module to import
@@ -48,4 +53,6 @@ if 'move_linear' not in locals():
     raise NotImplementedError("hal.move_linear() not implemented")
 if 'join' not in locals():
     raise NotImplementedError("hal.join() not implemented")
+if 'deinit' not in locals():
+    raise NotImplementedError("hal.deinit() not implemented")
 

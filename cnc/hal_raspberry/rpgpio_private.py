@@ -175,6 +175,8 @@ class CMAPhysicalMemory(PhysicalMemory):
         atexit.register(self.free)
 
     def free(self):
+        """Release and free allocated memory
+        """
         self._send_data(0x3000e, [self._handle])  # unlock memory
         self._send_data(0x3000f, [self._handle])  # free memory
         self._close_dev(self._vcio_fd)
@@ -196,3 +198,50 @@ class CMAPhysicalMemory(PhysicalMemory):
 
     def get_phys_address(self):
         return self._busmem & ~0xc0000000
+
+
+class DMAProto(object):
+    def __init__(self, memory_size):
+        """ This class provides basic access to DMA and creates buffer for
+            control blocks.
+        """
+        # allocate buffer for control blocks
+        self._physmem = CMAPhysicalMemory(memory_size)
+        # prepare dma registers memory map
+        self._dma = PhysicalMemory(PERI_BASE + DMA_BASE)
+
+    def _run_dma(self):
+        """ Run DMA module from created buffer.
+        """
+        address = 0x100 * self._DMA_CHANNEL
+        cs = self._dma.read_int(address)
+        cs |= DMA_CS_END
+        self._dma.write_int(address, cs)
+        self._dma.write_int(address + 4, self._physmem.get_bus_address())
+        cs = DMA_CS_PRIORITY(7) | DMA_CS_PANIC_PRIORITY(7) | DMA_CS_DISDEBUG
+        self._dma.write_int(address, cs)
+        cs |= DMA_CS_ACTIVE
+        self._dma.write_int(address, cs)
+
+    def _stop_dma(self):
+        """ Stop DMA
+        """
+        address = 0x100 * self._DMA_CHANNEL
+        cs = self._dma.read_int(address)
+        cs |= DMA_CS_ABORT
+        self._dma.write_int(address, cs)
+        cs &= ~DMA_CS_ACTIVE
+        self._dma.write_int(address, cs)
+        cs |= DMA_CS_RESET
+        self._dma.write_int(address, cs)
+
+    def is_active(self):
+        """ Check if DMA is working. Method can check if single sequence
+            still active or cycle sequence is working.
+        :return: boolean value
+        """
+        address = 0x100 * self._DMA_CHANNEL
+        cs = self._dma.read_int(address)
+        if cs & DMA_CS_ACTIVE == DMA_CS_ACTIVE:
+            return True
+        return False

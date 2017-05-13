@@ -20,19 +20,23 @@ G0, G1, G4, G20, G21, G28, G90, G91, G92, M2, M3, M5, M30
 Commands can be easily added, see [gmachine.py](./cnc/gmachine.py) file.
 
 # Config
-All config is stored in [config.py](./cnc/config.py) and contains hardware
+All configs are stored in [config.py](./cnc/config.py) and contain hardware
 properties, limitations and pin names for hardware control.  
 Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
-stepper motor controllers with DIR and STEP pin inputs.
+stepper motor drivers with DIR and STEP pin inputs.
 Default config is created for Raspberry Pi 2-3 and this wiring diagram:
 ![](https://cloud.githubusercontent.com/assets/8740775/26024664/bc13d5a6-37de-11e7-98ed-9391109fcfd0.jpg)  
-So having Raspberry Pi connected this was, there is no need to configure
+So having Raspberry Pi connected this way, there is no need to configure
 pin map for project.
-_Note: spindle control is not implemented yet_  
 
 # Hardware
 Currently, this project supports Raspberry Pi 1-3. Tested with RPI2. But there
 is a way to add new boards. See [hal.py](./cnc/hal.py) file.
+_Note: Current Raspberry Pi implementation uses the same resources as on board
+GPU(memory). So video output will not work with this project. Use ssh
+connection to board. And do not connect HDMI cable, otherwise project would not
+run. Probably, increasing of GPU dedicated memory(at least to 64 MB) could solve
+it and allow to work project and GPU together, but it was never tested._
 
 # Usage
 Just clone this repo and run `./pycnc` from repo root. It will start in

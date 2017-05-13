@@ -34,8 +34,9 @@ class GMachine(object):
     def release(self):
         """ Return machine to original position and free all resources.
         """
+        self._spindle(0)
         self.home()
-        hal.join()
+        hal.deinit()
 
     def reset(self):
         """ Reinitialize all program configurable thing.
@@ -48,6 +49,7 @@ class GMachine(object):
         self._absoluteCoordinates = True
 
     def _spindle(self, spindle_speed):
+        hal.join()
         hal.spindle_control(100.0 * spindle_speed / SPINDLE_MAX_RPM)
 
     def _move(self, delta, velocity):

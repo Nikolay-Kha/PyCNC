@@ -78,10 +78,12 @@ class GPIO(object):
         return 1
 
 
-class DMAGPIO(object):
+# When DMAGPIO is an active with two channels simultaneously, delay time shifts
+# a little bit, because all DMA channels query the same PWM(which is used as
+# clock for delay). So, do not create two or more instances of DMAGPIO.
+class DMAGPIO(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
     _DMA_CHANNEL = 5
-
     def __init__(self):
         """ Create object which control GPIO pins via DMA(Direct Memory
             Access).
@@ -92,12 +94,11 @@ class DMAGPIO(object):
             otherwise memory will be unlocked and it could be overwritten by
             operating system.
         """
-        # allocate buffer for control blocks, always 32 MB
-        self._physmem = CMAPhysicalMemory(32 * 1024 * 1024)
+        super(DMAGPIO, self).__init__(31 * 1024 * 1024)
         self.__current_address = 0
 
-        # prepare dma registers memory map
-        self._dma = PhysicalMemory(PERI_BASE + DMA_BASE)
+        # get helpers registers, this class uses PWM module to create precise
+        # delays
         self._pwm = PhysicalMemory(PERI_BASE + PWM_BASE)
         self._clock = PhysicalMemory(PERI_BASE + CM_BASE)
 
@@ -119,7 +120,10 @@ class DMAGPIO(object):
 
     def add_pulse(self, pins_mask, length_us):
         """ Add single pulse at the current position.
-            :param pins_mask: bitwise mask of GPIO pins to trigger. Only for first 32 pins.
+            Note: GPIO pins are not initialized in this method and should be
+            initialized in advance before running.
+            :param pins_mask: bitwise mask of GPIO pins to trigger. Only for
+                              first 32 pins.
             :param length_us: length in us.
         """
         next_cb = self.__current_address + 3 * self._DMA_CONTROL_BLOCK_SIZE
@@ -187,16 +191,7 @@ class DMAGPIO(object):
                       | PWM_DMAC_PANIC(15) | PWM_DMAC_DREQ(15))
         self._pwm.write_int(PWM_CTL, PWM_CTL_CLRF)
         self._pwm.write_int(PWM_CTL, PWM_CTL_USEF1 | PWM_CTL_PWEN1)
-        # configure DMA
-        addr = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(addr)
-        cs |= DMA_CS_END
-        self._dma.write_int(addr, cs)
-        self._dma.write_int(addr + 4, self._physmem.get_bus_address())
-        cs = DMA_CS_PRIORITY(7) | DMA_CS_PANIC_PRIORITY(7) | DMA_CS_DISDEBUG
-        self._dma.write_int(addr, cs)
-        cs |= DMA_CS_ACTIVE
-        self._dma.write_int(addr, cs)
+        super(DMAGPIO, self)._run_dma()
 
     def run(self, loop=False):
         """ Run DMA module and start sending specified pulses.
@@ -217,31 +212,114 @@ class DMAGPIO(object):
         """ Stop any DMA activities.
         """
         self._pwm.write_int(PWM_CTL, 0)
-        addr = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(addr)
-        cs |= DMA_CS_ABORT
-        self._dma.write_int(addr, cs)
-        cs &= ~DMA_CS_ACTIVE
-        self._dma.write_int(addr, cs)
-        cs |= DMA_CS_RESET
-        self._dma.write_int(addr, cs)
-
-    def is_active(self):
-        """ Check if DMA is working. Method can check if single sent sequence
-            still active.
-        :return: boolean value
-        """
-        addr = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(addr)
-        if cs & DMA_CS_ACTIVE == DMA_CS_ACTIVE:
-            return True
-        return False
+        super(DMAGPIO, self)._stop_dma()
 
     def clear(self):
-        """ Remove any specified pulses.
+        """ Remove any specified pulses. Doesn't affect currently running
+            sequence.
         """
         self.__current_address = 0
 
+
+class DMAPWM(DMAProto):
+    _DMA_CHANNEL = 14
+    _DMA_CONTROL_BLOCK_SIZE = 32
+    _DMA_DATA_OFFSET = 24
+    _TOTAL_NUMBER_OF_BLOCKS = 256
+    def __init__(self):
+        """ Initialise PWM. PWM has 8 bit resolution and fixed frequency
+            (~11.5 KHz and may flow). Though duty cycle is quite precise and
+            it uses the minimum amount of system resources (just one lite DMA
+            channel without any anything else).
+            That's why such PWM is best to use with collector motors, heaters
+            and other non sensitive hardware.
+            Implementation is super simple and uses lite DMA channel.
+            Overall frequency depends on number of blocks.
+            To adjust frequency, just write more byte per operation, use Wait
+            Cycles in info field of control blocks.
+        """
+        super(DMAPWM, self).__init__(self._TOTAL_NUMBER_OF_BLOCKS
+                                     * self._DMA_CONTROL_BLOCK_SIZE)
+        self._clear_pins = dict()
+        # first control block always set pins
+        self.__add_control_block(0, GPIO_SET_OFFSET)
+        # fill control blocks
+        for i in range(1, self._TOTAL_NUMBER_OF_BLOCKS):
+                self.__add_control_block(i * self._DMA_CONTROL_BLOCK_SIZE,
+                                         GPIO_CLEAR_OFFSET)
+        # loop
+        self._physmem.write_int((self._TOTAL_NUMBER_OF_BLOCKS - 1)
+                                * self._DMA_CONTROL_BLOCK_SIZE + 20,
+                                self._physmem.get_bus_address())
+        self._gpio = PhysicalMemory(PERI_BASE + GPIO_REGISTER_BASE)
+
+    def __add_control_block(self, address, offset):
+        ba = self._physmem.get_bus_address() + address
+        data = (
+            DMA_TI_NO_WIDE_BURSTS | DMA_TI_WAIT_RESP
+            | DMA_TI_DEST_INC | DMA_TI_SRC_INC,  # info
+            ba + self._DMA_DATA_OFFSET,  # source, last 8 bytes are padding, use it to store data
+            PHYSICAL_GPIO_BUS + offset,  # destination
+            4,  # length
+            0,  # stride
+            ba + self._DMA_CONTROL_BLOCK_SIZE,  # next control block
+            0,  # padding, uses as data storage
+            0  # padding
+        )
+        self._physmem.write(address, data)
+
+    def add_pin(self, pin, duty_cycle):
+        """ Add pin to PMW with specified duty cycle.
+        :param pin: pin number to add.
+        :param duty_cycle: duty cycle 0..100 which represent percents.
+        """
+        assert 0 <= duty_cycle <= 100
+        self.remove_pin(pin)
+        block_number = int(duty_cycle * self._TOTAL_NUMBER_OF_BLOCKS
+                           / 100.0)
+        if block_number == 0:
+            self._gpio.write_int(GPIO_CLEAR_OFFSET, 1 << pin)
+        elif block_number == self._TOTAL_NUMBER_OF_BLOCKS:
+            self._gpio.write_int(GPIO_SET_OFFSET, 1 << pin)
+            self._clear_pins[pin] = self._DMA_DATA_OFFSET
+        else:
+            value = self._physmem.read_int(self._DMA_DATA_OFFSET)
+            value |= 1 << pin
+            self._physmem.write_int(self._DMA_DATA_OFFSET, value)
+            clear_address = block_number * self._DMA_CONTROL_BLOCK_SIZE \
+                            + self._DMA_DATA_OFFSET
+            value = self._physmem.read_int(clear_address)
+            value |= 1 << pin
+            self._physmem.write_int(clear_address, value)
+            self._clear_pins[pin] = clear_address
+            if not self.is_active():
+                super(DMAPWM, self)._run_dma()
+
+    def remove_pin(self, pin):
+        """ Remove pin from PWM
+        :param pin: pin number to remove.
+        """
+        assert 0 <= pin < 32
+        if pin in self._clear_pins.keys():
+            address = self._clear_pins[pin]
+            value = self._physmem.read_int(address)
+            value &= ~(1 << pin)
+            self._physmem.write_int(address, value)
+            value = self._physmem.read_int(self._DMA_DATA_OFFSET)
+            value &= ~(1 << pin)
+            self._physmem.write_int(self._DMA_DATA_OFFSET, value)
+            del self._clear_pins[pin]
+            self._gpio.write_int(GPIO_CLEAR_OFFSET, 1 << pin)
+        if len(self._clear_pins) == 0 and self.is_active():
+            super(DMAPWM, self)._stop_dma()
+
+    def remove_all(self):
+        """ Remove all pins from PWM and stop it.
+        """
+        pins_list = self._clear_pins.keys()
+        for pin in pins_list:
+            self.remove_pin(pin)
+        assert len(self._clear_pins) == 0
 
 # for testing purpose
 def main():
@@ -272,8 +350,8 @@ def main():
     print("now " + hex(a))
     del cma
     dg = DMAGPIO()
-    dg.add_pulse(1 << pin, 4000)
-    dg.add_delay(12000)
+    dg.add_pulse(1 << pin, 100000)
+    dg.add_delay(600000)
     dg.run(True)
     print("dmagpio is started")
     try:
@@ -284,6 +362,16 @@ def main():
     dg.stop()
     g.clear(pin)
     print("dma stopped")
+    pwm = DMAPWM()
+    pwm.add_pin(pin, 20)
+    print("pwm is started")
+    try:
+        print("press enter to stop...")
+        sys.stdin.readline()
+    except KeyboardInterrupt:
+        pass
+    pwm.remove_pin(pin)
+    print("pwm stopped")
 
 if __name__ == "__main__":
     main()
