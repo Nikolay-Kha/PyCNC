@@ -51,7 +51,7 @@ def main():
     except KeyboardInterrupt:
         pass
     print("\r\nExiting...")
-    machine.destroy()
+    machine.release()
 
 if __name__ == "__main__":
     main()

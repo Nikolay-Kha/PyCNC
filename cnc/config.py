@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Hardware limitations config
 STEPPER_PULSE_LINGTH_US = 2
 STEPPER_MAX_VELOCITY_MM_PER_MIN = 1800  # mm per min

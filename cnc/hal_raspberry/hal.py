@@ -1,13 +1,11 @@
-#!/usr/bin/env python
-
 import logging
 import time
 
 import rpgpio
 
-from pulses import PulseGeneratorLinear
-from coordinates import Coordinates
-from config import *
+from cnc.pulses import PulseGeneratorLinear
+from cnc.coordinates import Coordinates
+from cnc.config import *
 
 # Stepper motors channel for RPIO
 STEPPER_CHANNEL = 0

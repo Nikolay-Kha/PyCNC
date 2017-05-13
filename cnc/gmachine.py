@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import time
 import logging
 
@@ -32,7 +30,9 @@ class GMachine(object):
         self.reset()
         hal.init()
 
-    def destroy(self):
+    def release(self):
+        """ Return machine to original position and free all resources.
+        """
         self.home()
         hal.join()
 

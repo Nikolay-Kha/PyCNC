@@ -1,0 +1,50 @@
+# This implementation allows to use different hardware.
+# Imported module contains functions for hardware access fo some board/SoC.
+# List of HAL methods that should be implemented in each module:
+#    def init():
+#        """ Initialize GPIO pins and machine itself, including calibration if
+#            needed. Do not return till all procedure is completed.
+#        """
+#        logging.info("initialize hal")
+#        do_something()
+#
+#
+#    def spindle_control(percent):
+#        """ Spindle control implementation.
+#        :param percent: Spindle speed in percent. 0 turns spindle off.
+#        """
+#        logging.info("spindle control: {}%".format(percent))
+#        do_something()
+#
+#
+#    def move_linear(delta, velocity):
+#        """ Move head to specified distance with specified speed.
+#        :param delta: Coordinated object, delta position in mm
+#        :param velocity: velocity in mm per min
+#        """
+#        do_something()
+#
+#
+#    def join():
+#        """ Wait till motors work.
+#        """
+#        do_something()
+
+
+# check which module to import
+try:
+    from hal_raspberry.hal import *
+except ImportError:
+    print("----- Hardware not detected, using virtual environment -----")
+    print("----- Use M111 command to enable more detailed debug -----")
+    from hal_virtual import *
+
+# check if all methods that is needed is implemented
+if 'init' not in locals():
+    raise NotImplementedError("hal.init() not implemented")
+if 'spindle_control' not in locals():
+    raise NotImplementedError("hal.spindle_control() not implemented")
+if 'move_linear' not in locals():
+    raise NotImplementedError("hal.move_linear() not implemented")
+if 'join' not in locals():
+    raise NotImplementedError("hal.join() not implemented")

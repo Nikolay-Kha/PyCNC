@@ -8,7 +8,6 @@ import sys
 import struct
 
 
-
 class GPIO(object):
     MODE_OUTPUT = 1
     MODE_INPUT_NOPULL = 2

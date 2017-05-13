@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import logging
 import time
 
@@ -10,6 +8,7 @@ from coordinates import Coordinates
 """ This is virtual device class which is very useful for debugging.
     It checks PulseGenerator with some tests.
 """
+
 
 def init():
     """ Initialize GPIO pins and machine itself, including calibration if
