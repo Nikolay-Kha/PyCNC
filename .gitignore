@@ -5,3 +5,6 @@ workspace.xml
 tasks.xml
 .idea/dictionaries
 pycnc.tar.bz2
+build
+*.egg-info/
+dist/
