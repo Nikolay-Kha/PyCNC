@@ -48,3 +48,4 @@ if 'move_linear' not in locals():
     raise NotImplementedError("hal.move_linear() not implemented")
 if 'join' not in locals():
     raise NotImplementedError("hal.join() not implemented")
+
