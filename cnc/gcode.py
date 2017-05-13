@@ -33,7 +33,7 @@ class GCode(object):
             return default
         return float(self.params[argname]) * multiply
 
-    def getXYZ(self, default, multiply):
+    def coordinates(self, default, multiply):
         """ Get X, Y and Z values as Coord object.
         :param default: Default values, if any of coords is not specified.
         :param multiply: If value exist, multiply it by this value.
@@ -44,7 +44,7 @@ class GCode(object):
         z = self.get('Z', default.z, multiply)
         return Coordinates(x, y, z)
 
-    def isXYZ(self):
+    def has_coordinates(self):
         """ Check if at least one of the coordinates is present.
         :return: Boolean value.
         """

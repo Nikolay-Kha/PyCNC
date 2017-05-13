@@ -1,3 +1,4 @@
+from __future__ import division
 import time
 import logging
 
@@ -69,6 +70,15 @@ class GMachine(object):
         d = Coordinates(-self._position.x, -self._position.y, 0)
         self._move(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
 
+    def position(self):
+        """ Return current machine position (after the latest command)
+            Note that hal might still be moving motors and in this case
+            function will block until motors stops.
+            This function for tests only.
+        """
+        hal.join()
+        return self._position
+
     def do_command(self, gcode):
         """ Perform action.
         :param gcode: GCode object which represent one gcode line
@@ -78,15 +88,15 @@ class GMachine(object):
         logging.debug("got command " + str(gcode.params))
         # read command
         c = gcode.command()
-        if c is None and gcode.isXYZ():
+        if c is None and gcode.has_coordinates():
             c = 'G1'
         # read parameters
         if self._absoluteCoordinates:
-            coord = gcode.getXYZ(self._position, self._convertCoordinates)
+            coord = gcode.coordinates(self._position, self._convertCoordinates)
             coord = coord + self._local
             delta = coord - self._position
         else:
-            delta = gcode.getXYZ(Coordinates(0.0, 0.0, 0.0), self._convertCoordinates)
+            delta = gcode.coordinates(Coordinates(0.0, 0.0, 0.0), self._convertCoordinates)
             coord = self._position + delta
         velocity = gcode.get('F', self._velocity)
         spindle_rpm = gcode.get('S', self._spindle_rpm)
@@ -118,7 +128,7 @@ class GMachine(object):
             self._absoluteCoordinates = False
         elif c == 'G92':  # switch to local coords
             self._local = self._position - \
-                          gcode.getXYZ(Coordinates(0.0, 0.0, 0.0), self._convertCoordinates)
+                          gcode.coordinates(Coordinates(0.0, 0.0, 0.0), self._convertCoordinates)
         elif c == 'M3':  # spinle on
             self._spindle(spindle_rpm)
         elif c == 'M5':  # spindle off
