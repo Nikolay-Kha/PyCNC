@@ -129,7 +129,7 @@ class PhysicalMemory(object):
 
     @staticmethod
     def _open_dev(name):
-        fd = os.open(name, os.O_SYNC | os.O_RDWR | os.O_LARGEFILE)
+        fd = os.open(name, os.O_SYNC | os.O_RDWR)
         if fd < 0:
             raise IOError("Failed to open " + name)
         return fd
