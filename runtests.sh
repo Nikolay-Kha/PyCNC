@@ -12,11 +12,13 @@ echo '* light up on pullup, set, and DMA test events.                      *'
 echo '**********************************************************************'
 echo '---------------------------Unit tests---------------------------------'
 python -m unittest discover "$@" --pattern="test_*.py"
-echo '-----------------------Integration tests------------------------------'
+echo '-------------------------Integration tests----------------------------'
 res="$(pycnc tests/rects.gcode 2>&1)"
 res="$res$(pycnc tests/test_parser.gcode 2>&1)"
 if echo "$res" | grep -q -i error; then
+  echo "FAILED"
   echo "$res"
   exit 1
 fi
+echo "OK"
 
