@@ -51,25 +51,41 @@ def init():
     pins = STEP_PIN_MASK_X | STEP_PIN_MASK_Y | STEP_PIN_MASK_Z
     dma.clear()
     dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
-    while True:
-        if (STEP_PIN_MASK_X & pins) != 0 and gpio.read(ENDSTOP_PIN_X) == 0:
-            pins &= ~STEP_PIN_MASK_X
-            dma.clear()
-            dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
-        if (STEP_PIN_MASK_Y & pins) != 0 and gpio.read(ENDSTOP_PIN_Y) == 0:
-            pins &= ~STEP_PIN_MASK_Y
-            dma.clear()
-            dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
-        if (STEP_PIN_MASK_Z & pins) != 0 and gpio.read(ENDSTOP_PIN_Z) == 0:
-            pins &= ~STEP_PIN_MASK_Z
-            dma.clear()
-            dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
-        if pins == 0:
-            break
-        dma.run(False)
-        # limit velocity at ~10% of top velocity
-        time.sleep((1 / 0.10) / (STEPPER_MAX_VELOCITY_MM_PER_MIN
-                                 / 60 * STEPPER_PULSES_PER_MM))
+    st = time.time()
+    max_pulses_left = int(1.2 * STEPPER_PULSES_PER_MM * max(
+                      TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM))
+    try:
+        while max_pulses_left > 0:
+            if (STEP_PIN_MASK_X & pins) != 0 and gpio.read(ENDSTOP_PIN_X) == 0:
+                pins &= ~STEP_PIN_MASK_X
+                dma.clear()
+                dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+            if (STEP_PIN_MASK_Y & pins) != 0 and gpio.read(ENDSTOP_PIN_Y) == 0:
+                pins &= ~STEP_PIN_MASK_Y
+                dma.clear()
+                dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+            if (STEP_PIN_MASK_Z & pins) != 0 and gpio.read(ENDSTOP_PIN_Z) == 0:
+                pins &= ~STEP_PIN_MASK_Z
+                dma.clear()
+                dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+            if pins == 0:
+                break
+            dma.run(False)
+            # limit velocity at ~10% of top velocity
+            time.sleep((1 / 0.10) / (STEPPER_MAX_VELOCITY_MM_PER_MIN
+                                     / 60 * STEPPER_PULSES_PER_MM))
+            max_pulses_left -= 1
+            if st is not None:
+                if time.time() - st > 2:
+                    logging.critical("Calibration still in progress. Check if "
+                                     "machine is moving.\nPress Ctrl+C to "
+                                     "cancel calibration and proceed as is.")
+                    st = None
+        if pins != 0:
+            logging.critical("Calibration has failed. You may proceed, but be "
+                             "careful.")
+    except KeyboardInterrupt:
+        logging.critical("Calibration has canceled by user. Be careful.")
 
 
 def spindle_control(percent):
