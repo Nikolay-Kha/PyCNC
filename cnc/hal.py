@@ -38,11 +38,11 @@
 
 # check which module to import
 try:
-    from hal_raspberry.hal import *
+    from cnc.hal_raspberry.hal import *
 except ImportError:
     print("----- Hardware not detected, using virtual environment -----")
     print("----- Use M111 command to enable more detailed debug -----")
-    from hal_virtual import *
+    from cnc.hal_virtual import *
 
 # check if all methods that is needed is implemented
 if 'init' not in locals():

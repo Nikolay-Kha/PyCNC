@@ -3,8 +3,8 @@ import time
 import logging
 
 import hal
-from coordinates import Coordinates
-from config import *
+from cnc.coordinates import Coordinates
+from cnc.config import *
 
 
 class GMachineException(Exception):

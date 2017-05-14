@@ -1,6 +1,6 @@
 import re
 
-from coordinates import Coordinates
+from cnc.coordinates import Coordinates
 
 gpattern = re.compile('([A-Z])([-+]?[0-9.]+)')
 cleanpattern = re.compile('\s+|\(.*?\)|;.*') # white spaces and comments start with ';' and in '()'

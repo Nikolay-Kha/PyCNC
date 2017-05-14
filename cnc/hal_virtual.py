@@ -2,9 +2,9 @@ from __future__ import division
 import logging
 import time
 
-from pulses import PulseGeneratorLinear
-from config import *
-from coordinates import Coordinates
+from cnc.pulses import PulseGeneratorLinear
+from cnc.config import *
+from cnc.coordinates import Coordinates
 
 """ This is virtual device class which is very useful for debugging.
     It checks PulseGenerator with some tests.

@@ -1,7 +1,7 @@
 import logging
 import time
 
-import rpgpio
+from cnc.hal_raspberry import rpgpio
 
 from cnc.pulses import PulseGeneratorLinear
 from cnc.coordinates import Coordinates

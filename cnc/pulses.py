@@ -2,8 +2,8 @@ from __future__ import division
 import math
 import logging
 
-from config import *
-from coordinates import Coordinates
+from cnc.config import *
+from cnc.coordinates import Coordinates
 
 SECONDS_IN_MINUTE = 60
 

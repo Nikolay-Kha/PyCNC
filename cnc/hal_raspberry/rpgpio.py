@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from rpgpio_private import *
+from cnc.hal_raspberry.rpgpio_private import *
 
 import time
 import logging

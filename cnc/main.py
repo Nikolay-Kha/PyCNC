@@ -6,8 +6,8 @@ import logging
 logging.basicConfig(level=logging.CRITICAL,
                     format='[%(levelname)s] %(message)s')
 
-from gcode import GCode, GCodeException
-from gmachine import GMachine, GMachineException
+from cnc.gcode import GCode, GCodeException
+from cnc.gmachine import GMachine, GMachineException
 
 try: # python3 compatibility
     type(raw_input)
