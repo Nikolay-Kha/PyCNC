@@ -2,7 +2,7 @@ from __future__ import division
 import time
 import logging
 
-import hal
+from cnc import hal
 from cnc.coordinates import Coordinates
 from cnc.config import *
 
