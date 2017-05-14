@@ -77,7 +77,12 @@ sudo ln -s /opt/pypy/bin/pypy /usr/local/bin/pypy
 ![](https://cloud.githubusercontent.com/assets/8740775/26027974/38cc80ac-3820-11e7-8fde-9cf106d77db5.png)
 
 # Dependencies
-Nothing. Just pure Python code.
+Nothing for runtime. Just pure Python code.
+For uploading to PyPi there is a need in `pandoc`:
+```bash
+sudo dnf install pandoc
+sudo pip install pypandoc
+```
 
 # GCode simulation
 Just a link, mostly for myself :), to a nice web software for gcode files
