@@ -27,10 +27,10 @@ class TestPulses(unittest.TestCase):
         i = 0
         for px, py, pz in g:
             i += 1
-            self.assertEquals(px, 0)
-            self.assertEquals(py, None)
-            self.assertEquals(pz, None)
-        self.assertEquals(i, 1)
+            self.assertEqual(px, 0)
+            self.assertEqual(py, None)
+            self.assertEqual(pz, None)
+        self.assertEqual(i, 1)
         g = PulseGeneratorLinear(Coordinates(
                                              1.0 / STEPPER_PULSES_PER_MM,
                                              1.0 / STEPPER_PULSES_PER_MM,
@@ -39,10 +39,10 @@ class TestPulses(unittest.TestCase):
         i = 0
         for px, py, pz in g:
             i += 1
-            self.assertEquals(px, 0)
-            self.assertEquals(py, 0)
-            self.assertEquals(pz, 0)
-        self.assertEquals(i, 1)
+            self.assertEqual(px, 0)
+            self.assertEqual(py, 0)
+            self.assertEqual(pz, 0)
+        self.assertEqual(i, 1)
 
     def test_linear_with_hal_virtual(self):
         # Using hal_virtual module for this test, it already contains plenty
@@ -62,13 +62,13 @@ class TestPulses(unittest.TestCase):
         i = 0
         for px, py, pz in g:
             if i % 2 == 0:
-                self.assertNotEquals(px, None)
+                self.assertNotEqual(px, None)
             else:
-                self.assertEquals(px, None)
-            self.assertNotEquals(py, None)
-            self.assertEquals(pz, None)
+                self.assertEqual(px, None)
+            self.assertNotEqual(py, None)
+            self.assertEqual(pz, None)
             i += 1
-        self.assertEquals(m.find_max() * STEPPER_PULSES_PER_MM, i)
+        self.assertEqual(m.find_max() * STEPPER_PULSES_PER_MM, i)
 
     def test_pulses_count_and_timings(self):
         # Check if number of pulses is equal to specified distance.
@@ -86,12 +86,12 @@ class TestPulses(unittest.TestCase):
             if pz is not None:
                 iz += 1
             v = list(x for x in (px, py, pz) if x is not None)
-            self.assertEquals(min(v), max(v))
+            self.assertEqual(min(v), max(v))
             self.assertLess(t, min(v))
             t = max(v)
-        self.assertEquals(m.x * STEPPER_PULSES_PER_MM, ix)
-        self.assertEquals(m.y * STEPPER_PULSES_PER_MM, iy)
-        self.assertEquals(m.z * STEPPER_PULSES_PER_MM, iz)
+        self.assertEqual(m.x * STEPPER_PULSES_PER_MM, ix)
+        self.assertEqual(m.y * STEPPER_PULSES_PER_MM, iy)
+        self.assertEqual(m.z * STEPPER_PULSES_PER_MM, iz)
         self.assertLessEqual(t, g.total_time_s())
 
     def test_acceleration_velocity(self):
@@ -109,7 +109,7 @@ class TestPulses(unittest.TestCase):
             bt = px - lx
             lx = px
             i += 1
-        self.assertEquals(round(60.0 / lt / STEPPER_PULSES_PER_MM), round(self.v))
+        self.assertEqual(round(60.0 / lt / STEPPER_PULSES_PER_MM), round(self.v))
         self.assertGreater(at, lt)
         self.assertGreater(bt, lt)
 

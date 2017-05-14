@@ -21,27 +21,27 @@ class TestGMachine(unittest.TestCase):
         m.do_command(GCode.parse_line("X1Y1Z1"))
         m.reset()
         m.do_command(GCode.parse_line("X3Y4Z5"))
-        self.assertEquals(m.position(), Coordinates(3, 4, 5))
+        self.assertEqual(m.position(), Coordinates(3, 4, 5))
 
     def test_release(self):
         # release homes head.
         m = GMachine()
         m.do_command(GCode.parse_line("X1Y2Z3"))
         m.release()
-        self.assertEquals(m.position(), Coordinates(0, 0, 0))
+        self.assertEqual(m.position(), Coordinates(0, 0, 0))
 
     def test_home(self):
         m = GMachine()
         m.do_command(GCode.parse_line("X1Y2Z3"))
         m.home()
-        self.assertEquals(m.position(), Coordinates(0, 0, 0))
+        self.assertEqual(m.position(), Coordinates(0, 0, 0))
 
     def test_none(self):
         # GMachine must ignore None commands, since GCode.parse_line()
         # returns None if no gcode found in line.
         m = GMachine()
         m.do_command(None)
-        self.assertEquals(m.position(), Coordinates(0, 0, 0))
+        self.assertEqual(m.position(), Coordinates(0, 0, 0))
 
     def test_unknown(self):
         # Test commands which doesn't exists
@@ -55,9 +55,9 @@ class TestGMachine(unittest.TestCase):
     def test_g0_g1(self):
         m = GMachine()
         m.do_command(GCode.parse_line("G0X3Y2Z1"))
-        self.assertEquals(m.position(), Coordinates(3, 2, 1))
+        self.assertEqual(m.position(), Coordinates(3, 2, 1))
         m.do_command(GCode.parse_line("G1X1Y2Z3"))
-        self.assertEquals(m.position(), Coordinates(1, 2, 3))
+        self.assertEqual(m.position(), Coordinates(1, 2, 3))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1F-1"))
         self.assertRaises(GMachineException,
@@ -81,10 +81,10 @@ class TestGMachine(unittest.TestCase):
         m = GMachine()
         m.do_command(GCode.parse_line("G20"))
         m.do_command(GCode.parse_line("X3Y2Z1"))
-        self.assertEquals(m.position(), Coordinates(76.2, 50.8, 25.4))
+        self.assertEqual(m.position(), Coordinates(76.2, 50.8, 25.4))
         m.do_command(GCode.parse_line("G21"))
         m.do_command(GCode.parse_line("X3Y2Z1"))
-        self.assertEquals(m.position(), Coordinates(3, 2, 1))
+        self.assertEqual(m.position(), Coordinates(3, 2, 1))
 
     def test_g90_g91(self):
         m = GMachine()
@@ -92,26 +92,26 @@ class TestGMachine(unittest.TestCase):
         m.do_command(GCode.parse_line("X1Y1Z1"))
         m.do_command(GCode.parse_line("X1Y1"))
         m.do_command(GCode.parse_line("X1"))
-        self.assertEquals(m.position(), Coordinates(3, 2, 1))
+        self.assertEqual(m.position(), Coordinates(3, 2, 1))
         m.do_command(GCode.parse_line("X-1Y-1Z-1"))
         m.do_command(GCode.parse_line("G90"))
         m.do_command(GCode.parse_line("X1Y1Z1"))
-        self.assertEquals(m.position(), Coordinates(1, 1, 1))
+        self.assertEqual(m.position(), Coordinates(1, 1, 1))
 
     def test_g90_g92(self):
         m = GMachine()
         m.do_command(GCode.parse_line("G92X100Y100Z100"))
         m.do_command(GCode.parse_line("X101Y102Z103"))
-        self.assertEquals(m.position(), Coordinates(1, 2, 3))
+        self.assertEqual(m.position(), Coordinates(1, 2, 3))
         m.do_command(GCode.parse_line("G92X-1Y-1Z-1"))
         m.do_command(GCode.parse_line("X1Y1Z1"))
-        self.assertEquals(m.position(), Coordinates(3, 4, 5))
+        self.assertEqual(m.position(), Coordinates(3, 4, 5))
         m.do_command(GCode.parse_line("G92X3Y4Z5"))
         m.do_command(GCode.parse_line("X0Y0Z0"))
-        self.assertEquals(m.position(), Coordinates(0, 0, 0))
+        self.assertEqual(m.position(), Coordinates(0, 0, 0))
         m.do_command(GCode.parse_line("G90"))
         m.do_command(GCode.parse_line("X6Y7Z8"))
-        self.assertEquals(m.position(), Coordinates(6, 7, 8))
+        self.assertEqual(m.position(), Coordinates(6, 7, 8))
 
     def test_m3_m5(self):
         m = GMachine()
