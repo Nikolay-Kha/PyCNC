@@ -112,6 +112,8 @@ def CM_DIV_VALUE(x):
 
 
 class PhysicalMemory(object):
+    lc = ctypes.cdll.LoadLibrary('libc.so.6')
+
     def __init__(self, phys_address, size=PAGE_SIZE):
         """ Create object which maps physical memory to Python's mmap object.
         :param phys_address: based address of physical memory
@@ -119,13 +121,18 @@ class PhysicalMemory(object):
         self._size = size
         phys_address -= phys_address % PAGE_SIZE
         fd = self._open_dev("/dev/mem")
-        self._rmap = mmap.mmap(fd, size, flags=mmap.MAP_SHARED,
-                               prot=mmap.PROT_READ | mmap.PROT_WRITE,
-                               offset=phys_address)
+        # Pypy doesn't work correctly with Python's mmap, use native calls
+        # self._rmap = mmap.mmap(fd, size, flags=mmap.MAP_SHARED,
+        #                        prot=mmap.PROT_READ | mmap.PROT_WRITE,
+        #                        offset=phys_address)
+        self._rmap = self.lc.mmap(None, size, mmap.PROT_READ | mmap.PROT_WRITE,
+                                  mmap.MAP_SHARED, fd, phys_address)
+        os.close(fd)
         atexit.register(self.cleanup)
 
     def cleanup(self):
-        self._rmap.close()
+        # self._rmap.close()
+        self.lc.munmap(self._rmap, self._size)
 
     @staticmethod
     def _open_dev(name):
@@ -139,18 +146,21 @@ class PhysicalMemory(object):
         os.close(fd)
 
     def write_int(self, address, int_value):
-        self._rmap[address:address + 4] = struct.pack("I", int_value)
+        # self._rmap[address:address + 4] = struct.pack("I", int_value)
+        ctypes.c_uint32.from_address(self._rmap + address).value = int_value
 
     def write(self, address, data):
-        self._rmap.seek(address)
-        self._rmap.write(struct.pack(str(len(data)) + "I", *data))
+        # self._rmap.seek(address)
+        # self._rmap.write(struct.pack(str(len(data)) + "I", *data))
+        for i in range(0, len(data)):
+            self.write_int(address + i * 4, data[i])
 
     def read_int(self, address):
-        return struct.unpack("I", self._rmap[address:address + 4])[0]
+        # return struct.unpack("I", self._rmap[address:address + 4])[0]
+        return ctypes.c_uint32.from_address(self._rmap + address).value
 
     def get_size(self):
         return self._size
-
 
 class CMAPhysicalMemory(PhysicalMemory):
     IOCTL_MBOX_PROPERTY = ctypes.c_long(0xc0046400).value
