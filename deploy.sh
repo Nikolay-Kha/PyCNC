@@ -3,7 +3,7 @@ set -e
 PASS=raspberry
 ADDR=pi@192.168.0.208
 if [ ! -z $1 ]; then
-    ADDR=$1
+    ADDR=pi@$1
 fi
 find . -name "*.py" -o -name "pycnc" | tar -cjf $(dirname "$0")/pycnc.tar.bz2 -T -
 sshpass -p${PASS} scp $(dirname "$0")/pycnc.tar.bz2 "${ADDR}:~/pycnc"
