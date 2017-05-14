@@ -1,5 +1,7 @@
 language: python
 python:
+  - "2.7"
   - "pypy-5.3.1"
+install:  # nothing
 script: ./runtests.sh
 
