@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/Nikolay-Kha/PyCNC.svg?branch=master)](https://travis-ci.org/Nikolay-Kha/PyCNC)
+
+# PyCNC
 This project bring CNC control for Raspberry Pi or any ARM based Linux boards.
 Typically there is no way to control stepper motors from Linux runtime
 environment due to the lack of real time GPIO control. Even kernel based
