@@ -122,6 +122,7 @@ class PhysicalMemory(object):
         self._rmap = mmap.mmap(fd, size, flags=mmap.MAP_SHARED,
                                prot=mmap.PROT_READ | mmap.PROT_WRITE,
                                offset=phys_address)
+        self._close_dev(fd)
         atexit.register(self.cleanup)
 
     def cleanup(self):
@@ -139,14 +140,13 @@ class PhysicalMemory(object):
         os.close(fd)
 
     def write_int(self, address, int_value):
-        self._rmap[address:address + 4] = struct.pack("I", int_value)
+        ctypes.c_uint32.from_buffer(self._rmap, address).value = int_value
 
-    def write(self, address, data):
-        self._rmap.seek(address)
-        self._rmap.write(struct.pack(str(len(data)) + "I", *data))
+    def write(self, address, fmt, data):
+        struct.pack_into(fmt, self._rmap, address, *data)
 
     def read_int(self, address):
-        return struct.unpack("I", self._rmap[address:address + 4])[0]
+        return ctypes.c_uint32.from_buffer(self._rmap, address).value
 
     def get_size(self):
         return self._size
@@ -154,6 +154,7 @@ class PhysicalMemory(object):
 
 class CMAPhysicalMemory(PhysicalMemory):
     IOCTL_MBOX_PROPERTY = ctypes.c_long(0xc0046400).value
+
     def __init__(self, size):
         """ This class allocates continuous memory with specified size, lock it
             and provide access to it with Python's mmap. It uses RPi video
@@ -162,10 +163,12 @@ class CMAPhysicalMemory(PhysicalMemory):
         """
         size = (size + PAGE_SIZE - 1) // PAGE_SIZE * PAGE_SIZE
         self._vcio_fd = self._open_dev("/dev/vcio")
-        self._handle = self._send_data(0x3000c, [size, PAGE_SIZE, 0xC]) # allocate memory
+        # allocate memory
+        self._handle = self._send_data(0x3000c, [size, PAGE_SIZE, 0xC])
         if self._handle == 0:
             raise OSError("No memory to allocate with /dev/vcio")
-        self._busmem = self._send_data(0x3000d, [self._handle]) # lock memory
+        # lock memory
+        self._busmem = self._send_data(0x3000d, [self._handle])
         if self._busmem == 0:
             # memory should be freed in __del__
             raise OSError("Failed to lock memory with /dev/vcio")
@@ -201,10 +204,11 @@ class CMAPhysicalMemory(PhysicalMemory):
 
 
 class DMAProto(object):
-    def __init__(self, memory_size):
+    def __init__(self, memory_size, dma_channel):
         """ This class provides basic access to DMA and creates buffer for
             control blocks.
         """
+        self._DMA_CHANNEL = dma_channel
         # allocate buffer for control blocks
         self._physmem = CMAPhysicalMemory(memory_size)
         # prepare dma registers memory map

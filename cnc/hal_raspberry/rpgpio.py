@@ -5,7 +5,6 @@ from .rpgpio_private import *
 import time
 import logging
 import sys
-import struct
 
 
 class GPIO(object):
@@ -45,7 +44,7 @@ class GPIO(object):
         v = self._mem.read_int(addr)
         v &= ~(7 << ((pin % 10) * 3))  # input value
         if mode == self.MODE_OUTPUT:
-            v |=  (1 << ((pin % 10) * 3))  # output value, base on input
+            v |= (1 << ((pin % 10) * 3))  # output value, base on input
             self._mem.write_int(addr, v)
         else:
             self._mem.write_int(addr, v)
@@ -83,7 +82,7 @@ class GPIO(object):
 # clock for delay). So, do not create two or more instances of DMAGPIO.
 class DMAGPIO(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
-    _DMA_CHANNEL = 5
+
     def __init__(self):
         """ Create object which control GPIO pins via DMA(Direct Memory
             Access).
@@ -94,7 +93,7 @@ class DMAGPIO(DMAProto):
             otherwise memory will be unlocked and it could be overwritten by
             operating system.
         """
-        super(DMAGPIO, self).__init__(31 * 1024 * 1024)
+        super(DMAGPIO, self).__init__(31 * 1024 * 1024, 5)
         self.__current_address = 0
 
         # get helpers registers, this class uses PWM module to create precise
@@ -106,7 +105,7 @@ class DMAGPIO(DMAProto):
         self._delay_info = DMA_TI_NO_WIDE_BURSTS | DMA_SRC_IGNORE \
                            | DMA_TI_PER_MAP(DMA_TI_PER_MAP_PWM) \
                            | DMA_TI_DEST_DREQ
-        self._delay_destination = PHYSICAL_PWM_BUS + 0x18
+        self._delay_destination = PHYSICAL_PWM_BUS + PWM_FIFO
         self._delay_stride = 0
 
         self._pulse_info = DMA_TI_NO_WIDE_BURSTS | DMA_TI_TDMODE \
@@ -138,16 +137,16 @@ class DMAGPIO(DMAProto):
         source3 = next3 - 8
 
         data = (
-                self._pulse_info, source1, self._pulse_destination,
-                     self._pulse_length,
-                self._pulse_stride, next1, pins_mask, 0,
-                self._delay_info, 0, self._delay_destination, length2,
-                self._delay_stride, next2, 0, 0,
-                self._pulse_info, source3, self._pulse_destination,
-                     self._pulse_length,
-                self._pulse_stride, next3, 0, pins_mask
+            self._pulse_info, source1, self._pulse_destination,
+                self._pulse_length,
+            self._pulse_stride, next1, pins_mask, 0,
+            self._delay_info, 0, self._delay_destination, length2,
+            self._delay_stride, next2, 0, 0,
+            self._pulse_info, source3, self._pulse_destination,
+                 self._pulse_length,
+            self._pulse_stride, next3, 0, pins_mask
                 )
-        self._physmem.write(self.__current_address, data)
+        self._physmem.write(self.__current_address, "24I", data)
         self.__current_address = next_cb
 
     def add_delay(self, delay_us):
@@ -157,14 +156,14 @@ class DMAGPIO(DMAProto):
         next_cb = self.__current_address + self._DMA_CONTROL_BLOCK_SIZE
         if next_cb > self._physmem.get_size():
             raise MemoryError("Out of allocated memory.")
-        next = self._physmem.get_bus_address() + next_cb
-        source = next - 8  # last 8 bytes are padding, use it to store data
+        next1 = self._physmem.get_bus_address() + next_cb
+        source = next1 - 8  # last 8 bytes are padding, use it to store data
         length = 16 * delay_us
         data = (
                 self._delay_info, source, self._delay_destination, length,
-                self._delay_stride, next, 0, 0
+                self._delay_stride, next1, 0, 0
                )
-        self._physmem.write(self.__current_address, data)
+        self._physmem.write(self.__current_address, "8I", data)
         self.__current_address = next_cb
 
     def finalize_stream(self):
@@ -188,7 +187,7 @@ class DMAGPIO(DMAProto):
         self._clock.write_int(CM_CNTL, CM_PASSWORD | CM_SRC_PLLD | CM_ENABLE)
         self._pwm.write_int(PWM_RNG1, 100)
         self._pwm.write_int(PWM_DMAC, PWM_DMAC_ENAB
-                      | PWM_DMAC_PANIC(15) | PWM_DMAC_DREQ(15))
+                            | PWM_DMAC_PANIC(15) | PWM_DMAC_DREQ(15))
         self._pwm.write_int(PWM_CTL, PWM_CTL_CLRF)
         self._pwm.write_int(PWM_CTL, PWM_CTL_USEF1 | PWM_CTL_PWEN1)
         super(DMAGPIO, self)._run_dma()
@@ -222,10 +221,10 @@ class DMAGPIO(DMAProto):
 
 
 class DMAPWM(DMAProto):
-    _DMA_CHANNEL = 14
     _DMA_CONTROL_BLOCK_SIZE = 32
     _DMA_DATA_OFFSET = 24
     _TOTAL_NUMBER_OF_BLOCKS = 256
+
     def __init__(self):
         """ Initialise PWM. PWM has 8 bit resolution and fixed frequency
             (~11.5 KHz and may flow). Though duty cycle is quite precise and
@@ -239,7 +238,7 @@ class DMAPWM(DMAProto):
             Cycles in info field of control blocks.
         """
         super(DMAPWM, self).__init__(self._TOTAL_NUMBER_OF_BLOCKS
-                                     * self._DMA_CONTROL_BLOCK_SIZE)
+                                     * self._DMA_CONTROL_BLOCK_SIZE, 14)
         self._clear_pins = dict()
         # first control block always set pins
         self.__add_control_block(0, GPIO_SET_OFFSET)
@@ -266,7 +265,7 @@ class DMAPWM(DMAProto):
             0,  # padding, uses as data storage
             0  # padding
         )
-        self._physmem.write(address, data)
+        self._physmem.write(address, "8I", data)
 
     def add_pin(self, pin, duty_cycle):
         """ Add pin to PMW with specified duty cycle.
@@ -321,6 +320,7 @@ class DMAPWM(DMAProto):
             self.remove_pin(pin)
         assert len(self._clear_pins) == 0
 
+
 # for testing purpose
 def main():
     pin = 21
@@ -340,7 +340,7 @@ def main():
     print("clear " + str(g.read(pin)))
     time.sleep(1)
     cma = CMAPhysicalMemory(1*1024*1024)
-    print(str(cma.get_size() / 1024 / 1024) + "MB of memory allocated at " \
+    print(str(cma.get_size() / 1024 / 1024) + "MB of memory allocated at "
           + hex(cma.get_phys_address()))
     a = cma.read_int(0)
     print("was " + hex(a))
