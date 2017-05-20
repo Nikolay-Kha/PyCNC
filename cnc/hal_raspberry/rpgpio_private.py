@@ -39,6 +39,8 @@ PHYSICAL_GPIO_BUS = 0x7E000000 + GPIO_REGISTER_BASE
 
 # registers and values for DMA
 DMA_BASE = 0x007000
+DMA_CS = 0x00
+DMA_CONBLK_AD = 0x04
 DMA_TI_NO_WIDE_BURSTS = 1 << 26
 DMA_TI_SRC_INC = 1 << 8
 DMA_TI_DEST_INC = 1 << 4
@@ -79,16 +81,20 @@ def DMA_CS_PANIC_PRIORITY(x):
 
 # hardware PWM controller registers
 PWM_BASE = 0x0020C000
+PHYSICAL_PWM_BUS = 0x7E000000 + PWM_BASE
 PWM_CTL= 0x00
 PWM_DMAC = 0x08
 PWM_RNG1 = 0x10
+PWM_RNG2 = 0x20
 PWM_FIFO = 0x18
 PWM_CTL_MODE1 = 1 << 1
+PWM_CTL_MODE2 = 1 << 9
 PWM_CTL_PWEN1 = 1 << 0
+PWM_CTL_PWEN2 = 1 << 8
 PWM_CTL_CLRF = 1 << 6
 PWM_CTL_USEF1 = 1 << 5
+PWM_CTL_USEF2 = 1 << 13
 PWM_DMAC_ENAB = 1 << 31
-PHYSICAL_PWM_BUS = 0x7E000000 + PWM_BASE
 
 def PWM_DMAC_PANIC(x):
     return x << 8
@@ -98,10 +104,13 @@ def PWM_DMAC_DREQ(x):
 
 # clock manager module
 CM_BASE = 0x00101000
-CM_CNTL = 40
-CM_DIV = 41
+CM_PCM_CNTL = 0x98
+CM_PCM_DIV = 0x9C
+CM_PWM_CNTL = 0xA0
+CM_PWM_DIV = 0xA4
 CM_PASSWORD = 0x5A << 24
-CM_ENABLE = 1 << 4
+CM_CNTL_ENABLE = 1 << 4
+CM_CNTL_BUSY = 1 << 7
 CM_SRC_OSC = 1   # 19.2 MHz
 CM_SRC_PLLC = 5  # 1000 MHz
 CM_SRC_PLLD = 6  #  500 MHz
@@ -218,26 +227,24 @@ class DMAProto(object):
         """ Run DMA module from created buffer.
         """
         address = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(address)
-        cs |= DMA_CS_END
-        self._dma.write_int(address, cs)
-        self._dma.write_int(address + 4, self._physmem.get_bus_address())
+        self._dma.write_int(address + DMA_CS, DMA_CS_END)
+        self._dma.write_int(address + DMA_CONBLK_AD, self._physmem.get_bus_address())
         cs = DMA_CS_PRIORITY(7) | DMA_CS_PANIC_PRIORITY(7) | DMA_CS_DISDEBUG
-        self._dma.write_int(address, cs)
+        self._dma.write_int(address + DMA_CS, cs)
         cs |= DMA_CS_ACTIVE
-        self._dma.write_int(address, cs)
+        self._dma.write_int(address + DMA_CS, cs)
 
     def _stop_dma(self):
         """ Stop DMA
         """
         address = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(address)
+        cs = self._dma.read_int(address + DMA_CS)
         cs |= DMA_CS_ABORT
-        self._dma.write_int(address, cs)
+        self._dma.write_int(address + DMA_CS, cs)
         cs &= ~DMA_CS_ACTIVE
-        self._dma.write_int(address, cs)
+        self._dma.write_int(address + DMA_CS, cs)
         cs |= DMA_CS_RESET
-        self._dma.write_int(address, cs)
+        self._dma.write_int(address + DMA_CS, cs)
 
     def is_active(self):
         """ Check if DMA is working. Method can check if single sequence
@@ -245,7 +252,7 @@ class DMAProto(object):
         :return: boolean value
         """
         address = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(address)
+        cs = self._dma.read_int(address + DMA_CS)
         if cs & DMA_CS_ACTIVE == DMA_CS_ACTIVE:
             return True
         return False

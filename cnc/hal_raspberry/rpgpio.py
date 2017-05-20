@@ -93,7 +93,7 @@ class DMAGPIO(DMAProto):
             otherwise memory will be unlocked and it could be overwritten by
             operating system.
         """
-        super(DMAGPIO, self).__init__(31 * 1024 * 1024, 5)
+        super(DMAGPIO, self).__init__(30 * 1024 * 1024, 4)
         self.__current_address = 0
 
         # get helpers registers, this class uses PWM module to create precise
@@ -133,7 +133,7 @@ class DMAGPIO(DMAProto):
         next1 = next2 - self._DMA_CONTROL_BLOCK_SIZE
 
         source1 = next1 - 8  # last 8 bytes are padding, use it to store data
-        length2 = 16 * length_us
+        length2 = length_us << 4  # * 16
         source3 = next3 - 8
 
         data = (
@@ -158,7 +158,7 @@ class DMAGPIO(DMAProto):
             raise MemoryError("Out of allocated memory.")
         next1 = self._physmem.get_bus_address() + next_cb
         source = next1 - 8  # last 8 bytes are padding, use it to store data
-        length = 16 * delay_us
+        length = delay_us << 4  # * 16
         data = (
                 self._delay_info, source, self._delay_destination, length,
                 self._delay_stride, next1, 0, 0
@@ -180,11 +180,13 @@ class DMAGPIO(DMAProto):
         """
         # configure PWM hardware module which will clocks DMA
         self._pwm.write_int(PWM_CTL, 0)
-        self._clock.write_int(CM_CNTL, CM_PASSWORD | CM_SRC_PLLD)  # disable
-        while (self._clock.read_int(CM_CNTL) & (1 << 7)) != 0:
+        self._clock.write_int(CM_PWM_CNTL, CM_PASSWORD | CM_SRC_PLLD)  # disable
+        while (self._clock.read_int(CM_PWM_CNTL) & CM_CNTL_BUSY) != 0:
             time.sleep(0.00001)  # 10 us, wait until BUSY bit is clear
-        self._clock.write_int(CM_DIV, CM_PASSWORD | CM_DIV_VALUE(50))  # 10MHz
-        self._clock.write_int(CM_CNTL, CM_PASSWORD | CM_SRC_PLLD | CM_ENABLE)
+        self._clock.write_int(CM_PWM_DIV, CM_PASSWORD | CM_DIV_VALUE(5))  # 100MHz
+        self._clock.write_int(CM_PWM_CNTL, CM_PASSWORD | CM_SRC_PLLD |
+                                           CM_CNTL_ENABLE)
+
         self._pwm.write_int(PWM_RNG1, 100)
         self._pwm.write_int(PWM_DMAC, PWM_DMAC_ENAB
                             | PWM_DMAC_PANIC(15) | PWM_DMAC_DREQ(15))
@@ -350,7 +352,7 @@ def main():
     print("now " + hex(a))
     del cma
     dg = DMAGPIO()
-    dg.add_pulse(1 << pin, 100000)
+    dg.add_pulse(1 << pin, 200000)
     dg.add_delay(600000)
     dg.run(True)
     print("dmagpio is started")

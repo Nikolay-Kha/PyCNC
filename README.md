@@ -33,13 +33,10 @@ So having Raspberry Pi connected this way, there is no need to configure
 pin map for project.
 
 # Hardware
-Currently, this project supports Raspberry Pi 1-3. Tested with RPI2. But there
-is a way to add new boards. See [hal.py](./cnc/hal.py) file.
+Currently, this project supports Raspberry Pi 1-3. Tested with RPI2 and RPI3.
+But there is a way to add new boards. See [hal.py](./cnc/hal.py) file.
 _Note: Current Raspberry Pi implementation uses the same resources as on board
-GPU(memory). So video output will not work with this project. Use ssh
-connection to board. And do not connect HDMI cable, otherwise project would not
-run. Probably, increasing of GPU dedicated memory(at least to 64 MB) could solve
-it and allow to work project and GPU together, but it was never tested._
+3.5 mm jack(PWM module), so do not use it. HDMI audio works._
 
 # Usage
 Just clone this repo and run `./pycnc` from repo root. It will start in
