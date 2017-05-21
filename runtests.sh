@@ -13,8 +13,13 @@ echo '**********************************************************************'
 echo '---------------------------Unit tests---------------------------------'
 python -m unittest discover "$@" --pattern="test_*.py"
 echo '-------------------------Integration tests----------------------------'
-res="$(pycnc tests/rects.gcode 2>&1)"
-res="$res$(pycnc tests/test_parser.gcode 2>&1)"
+app="pycnc"
+if ! which $app 2&> /dev/null; then
+    echo "WARNING pycnc not found in path. Not installed? Using './pycnc'."
+    app="./pycnc"
+fi
+res="$($app tests/rects.gcode 2>&1)"
+res="$res$($app tests/test_parser.gcode 2>&1)"
 if echo "$res" | grep -q -i error; then
   echo "FAILED"
   echo "$res"
