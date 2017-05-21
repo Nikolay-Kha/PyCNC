@@ -86,13 +86,13 @@ class TestGCode(unittest.TestCase):
                                math.sqrt(40.5), 9)
         self.assertEqual(gc.radius(Plane.PLANE_XY, self.default, 1).z,
                          self.default.z)
-        gc = GCode.parse_line("G3R10")
+        gc = GCode.parse_line("G3R-10")
         self.assertAlmostEqual(gc.radius(Plane.PLANE_ZX, self.default, 1).x,
-                               math.sqrt(50), 9)
+                               -math.sqrt(50), 9)
         self.assertEqual(gc.radius(Plane.PLANE_ZX, self.default, 1).y,
                          self.default.y)
         self.assertAlmostEqual(gc.radius(Plane.PLANE_ZX, self.default, 1).z,
-                               math.sqrt(50), 9)
+                               -math.sqrt(50), 9)
         gc = GCode.parse_line("G3R11")
         self.assertEqual(gc.radius(Plane.PLANE_YZ, self.default, 1).x,
                          self.default.x)
