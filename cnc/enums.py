@@ -1,7 +1,8 @@
 """ This module describes system wide enums.
 """
 
-class Plane:
+
+class Plane(object):
     """ Enum for choosing plane for circular interpolation.
     """
     PLANE_XY = 1
@@ -9,7 +10,7 @@ class Plane:
     PLANE_YZ = 3
 
 
-class RotationDirection:
+class RotationDirection(object):
     """ Enum for choosing rotation direction.
     """
     CW = 1
