@@ -1,6 +1,8 @@
 import re
+import math
 
 from cnc.coordinates import Coordinates
+from cnc.enums import Plane
 
 gpattern = re.compile('([A-Z])([-+]?[0-9.]+)')
 cleanpattern = re.compile('\s+|\(.*?\)|;.*') # white spaces and comments start with ';' and in '()'
@@ -50,6 +52,26 @@ class GCode(object):
         """
         return 'X' in self.params or 'Y' in self.params or 'Z' in self.params
 
+    def radius(self, plane, default, multiply):
+        """ Get radius for circular interpolation(I, J, K or R).
+        :param plane: If R is present, specify which axises should be used.
+        :param default: Default values, if any of coords is not specified.
+        :param multiply: If value exist, multiply it by this value.
+        :return: Coord object.
+        """
+        i = self.get('I', default.x, multiply)
+        j = self.get('J', default.y, multiply)
+        k = self.get('K', default.z, multiply)
+        if 'R' in self.params:
+            r1 = self.get('R', None, multiply) / math.sqrt(2.0)
+            if plane == Plane.PLANE_XY:
+                i = j = r1
+            elif plane == Plane.PLANE_ZX:
+                k = i = r1
+            elif plane == Plane.PLANE_YZ:
+                j = k = r1
+        return Coordinates(i, j, k)
+
     def command(self):
         """ Get value from gcode line.
         :return: String with command or None if no command specified.
@@ -82,4 +104,6 @@ class GCode(object):
             raise GCodeException('duplicated gcode entries')
         if 'G' in params and 'M' in params:
             raise GCodeException('g and m command found')
+        if 'R' in params and ('I' in params or 'J' in params or 'K' in params):
+            raise GCodeException('r and component radius found')
         return GCode(params)

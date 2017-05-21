@@ -1,6 +1,8 @@
 import unittest
+import math
 
 from cnc.coordinates import *
+from cnc.enums import *
 from cnc.gcode import *
 
 
@@ -64,6 +66,40 @@ class TestGCode(unittest.TestCase):
         self.assertTrue(gc.has_coordinates())
         gc = GCode.parse_line("Z1")
         self.assertTrue(gc.has_coordinates())
+
+    def test_radius(self):
+        gc = GCode.parse_line("G2I1J2K3")
+        self.assertEqual(gc.radius(None, self.default, 1).x, 1)
+        self.assertEqual(gc.radius(None, self.default, 1).y, 2)
+        self.assertEqual(gc.radius(None, self.default, 1).z, 3)
+        gc = GCode.parse_line("G3")
+        self.assertEqual(gc.radius(None, self.default, 1).x, self.default.x)
+        self.assertEqual(gc.radius(None, self.default, 1).y, self.default.y)
+        self.assertEqual(gc.radius(None, self.default, 1).z, self.default.z)
+        self.assertRaises(GCodeException, GCode.parse_line, "R1I2")
+        self.assertRaises(GCodeException, GCode.parse_line, "R1J2")
+        self.assertRaises(GCodeException, GCode.parse_line, "R1K2")
+        gc = GCode.parse_line("G3R9")
+        self.assertAlmostEqual(gc.radius(Plane.PLANE_XY, self.default, 1).x,
+                               math.sqrt(40.5), 9)
+        self.assertAlmostEqual(gc.radius(Plane.PLANE_XY, self.default, 1).y,
+                               math.sqrt(40.5), 9)
+        self.assertEqual(gc.radius(Plane.PLANE_XY, self.default, 1).z,
+                         self.default.z)
+        gc = GCode.parse_line("G3R10")
+        self.assertAlmostEqual(gc.radius(Plane.PLANE_ZX, self.default, 1).x,
+                               math.sqrt(50), 9)
+        self.assertEqual(gc.radius(Plane.PLANE_ZX, self.default, 1).y,
+                         self.default.y)
+        self.assertAlmostEqual(gc.radius(Plane.PLANE_ZX, self.default, 1).z,
+                               math.sqrt(50), 9)
+        gc = GCode.parse_line("G3R11")
+        self.assertEqual(gc.radius(Plane.PLANE_YZ, self.default, 1).x,
+                         self.default.x)
+        self.assertAlmostEqual(gc.radius(Plane.PLANE_YZ, self.default, 1).y,
+                               math.sqrt(60.5), 9)
+        self.assertAlmostEqual(gc.radius(Plane.PLANE_YZ, self.default, 1).z,
+                               math.sqrt(60.5), 9)
 
     def test_multiply(self):
         # getting coordinates could modify value be specified multiplier.
