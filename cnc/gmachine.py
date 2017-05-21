@@ -124,13 +124,16 @@ class GMachine(object):
             self._convertCoordinates = 1.0
         elif c == 'G28':  # home
             self.home()
+        elif c == 'G53':  # switch to machine coords
+            self._local = Coordinates(0.0, 0.0, 0.0)
         elif c == 'G90':  # switch to absolute coords
             self._absoluteCoordinates = True
         elif c == 'G91':  # switch to relative coords
             self._absoluteCoordinates = False
         elif c == 'G92':  # switch to local coords
             self._local = self._position - \
-                          gcode.coordinates(Coordinates(0.0, 0.0, 0.0), self._convertCoordinates)
+                          gcode.coordinates(Coordinates(0.0, 0.0, 0.0),
+                                            self._convertCoordinates)
         elif c == 'M3':  # spinle on
             self._spindle(spindle_rpm)
         elif c == 'M5':  # spindle off
