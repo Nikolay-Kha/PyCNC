@@ -113,6 +113,15 @@ class TestGMachine(unittest.TestCase):
         m.do_command(GCode.parse_line("X6Y7Z8"))
         self.assertEqual(m.position(), Coordinates(6, 7, 8))
 
+    def test_g53_g91_g92(self):
+        m = GMachine()
+        m.do_command(GCode.parse_line("G92X-50Y-60Z-70"))
+        m.do_command(GCode.parse_line("X-45Y-55Z-65"))
+        self.assertEqual(m.position(), Coordinates(5, 5, 5))
+        m.do_command(GCode.parse_line("G91"))
+        m.do_command(GCode.parse_line("X-1Y-2Z-3"))
+        self.assertEqual(m.position(), Coordinates(4, 3, 2))
+
     def test_m3_m5(self):
         m = GMachine()
         m.do_command(GCode.parse_line("M3S" + str(SPINDLE_MAX_RPM)))
