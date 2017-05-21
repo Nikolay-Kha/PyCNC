@@ -1,9 +1,7 @@
-from enum import Enum
-
 """ This module describes system wide enums.
 """
 
-class Plane(Enum):
+class Plane:
     """ Enum for choosing plane for circular interpolation.
     """
     PLANE_XY = 1
@@ -11,7 +9,7 @@ class Plane(Enum):
     PLANE_YZ = 3
 
 
-class RotationDirection(Enum):
+class RotationDirection:
     """ Enum for choosing rotation direction.
     """
     CW = 1
