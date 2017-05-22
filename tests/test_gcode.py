@@ -2,7 +2,6 @@ import unittest
 import math
 
 from cnc.coordinates import *
-from cnc.enums import *
 from cnc.gcode import *
 
 

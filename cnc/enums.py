@@ -2,16 +2,40 @@
 """
 
 
-class Plane(object):
+class Enum(object):
+    """ Base class for enums
+    """
+    __global_increment = 1
+
+    def __init__(self, for_str):
+        """ Initialize base class for enumerates.
+        :param for_str: return value for build in str() function
+        """
+        self.value = Enum.__global_increment
+        self._str = for_str
+        Enum.__global_increment += 1
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __str__(self):
+        return self._str
+
+
+class Plane(Enum):
     """ Enum for choosing plane for circular interpolation.
     """
-    PLANE_XY = 1
-    PLANE_ZX = 2
-    PLANE_YZ = 3
+    pass
+
+PLANE_XY = Plane("XY")
+PLANE_ZX = Plane("ZX")
+PLANE_YZ = Plane("YZ")
 
 
-class RotationDirection(object):
+class RotationDirection(Enum):
     """ Enum for choosing rotation direction.
     """
-    CW = 1
-    CCW = 2
+    pass
+
+CW = RotationDirection("CW")
+CCW = RotationDirection("CCW")

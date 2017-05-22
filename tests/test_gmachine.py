@@ -69,6 +69,37 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X0Y0Z-1"))
 
+    def test_g2_g3(self):
+        m = GMachine()
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G3I1J1F-1"))
+        m.do_command(GCode.parse_line("G19"))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G3I1J0K0"))
+        m.do_command(GCode.parse_line("G18"))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G3I0J1K0"))
+        m.do_command(GCode.parse_line("G17"))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G3I0J0K1"))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G2X99999999Y99999999I1J1"))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G2X2Y2Z99999999I1J1"))
+        self.assertEqual(m.position(), Coordinates(0, 0, 0))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G2X4Y4I2J2"))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G3X4Y4I2J2"))
+        m.do_command(GCode.parse_line("G1X1"))
+        m.do_command(GCode.parse_line("G2J1"))
+        m.do_command(GCode.parse_line("G3J1"))
+        self.assertEqual(m.position(), Coordinates(1, 0, 0))
+        m.do_command(GCode.parse_line("G1X5Y5"))
+        m.do_command(GCode.parse_line("G2X0Y0Z5I-2J-2"))
+        self.assertEqual(m.position(), Coordinates(0, 0, 5))
+
+
     def test_g4(self):
         m = GMachine()
         st = time.time()
@@ -76,6 +107,15 @@ class TestGMachine(unittest.TestCase):
         self.assertLess(0.5, time.time() - st)
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G4P-0.5"))
+
+    def test_g17_g18_g19(self):
+        m = GMachine()
+        m.do_command(GCode.parse_line("G19"))
+        self.assertEqual(m.plane(), PLANE_YZ)
+        m.do_command(GCode.parse_line("G18"))
+        self.assertEqual(m.plane(), PLANE_ZX)
+        m.do_command(GCode.parse_line("G17"))
+        self.assertEqual(m.plane(), PLANE_XY)
 
     def test_g20_g21(self):
         m = GMachine()

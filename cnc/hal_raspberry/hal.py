@@ -90,7 +90,7 @@ def init():
 
 def spindle_control(percent):
     """ Spindle control implementation.
-    :param percent: Spindle speed in percent. If 0, stop the spindle.
+    :param percent: spindle speed in percent. If 0, stop the spindle.
     """
     logging.info("spindle control: {}%".format(percent))
     if percent > 0:
@@ -101,7 +101,7 @@ def spindle_control(percent):
 
 def move_linear(delta, velocity):
     """ Move head to specified position
-    :param delta: Coordinated object, delta position in mm
+    :param delta: coordinated object, delta position in mm
     :param velocity: velocity in mm per min
     """
     logging.info("move {} with velocity {}".format(delta, velocity))
@@ -164,6 +164,20 @@ def move_linear(delta, velocity):
 
     logging.info("prepared in " + str(round(pt - st, 2)) + "s, estimated in "
                  + str(round(generator.total_time_s(), 2)) + "s")
+
+
+def move_circular(delta, radius, plane, velocity, direction):
+    """ Move with circular interpolation.
+    :param delta: finish position delta from the beginning, must be on
+                  circle on specified plane. Zero means full circle.
+    :param radius: vector to center of circle.
+    :param plane: plane to interpolate.
+    :param velocity: velocity in mm per min.
+    :param direction: clockwise or counterclockwise.
+    """
+    logging.info("TODO move_circular {} {} {} with radius {} and velocity {}".
+                 format(plane, delta, direction, radius, velocity))
+    # TODO
 
 
 def join():

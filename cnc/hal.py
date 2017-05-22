@@ -25,10 +25,23 @@
 #        do_something()
 #
 #
+#    def move_circular(delta, radius, plane, velocity, direction):
+#        """ Move with circular interpolation.
+#        :param delta: finish position delta from the beginning, must be on
+#                      circle on specified plane. Zero means full circle.
+#        :param radius: vector to center of circle.
+#        :param plane: plane to interpolate.
+#        :param velocity: velocity in mm per min.
+#        :param direction: clockwise or counterclockwise.
+#        """
+#        do_something()
+#
+#
 #    def join():
 #        """ Wait till motors work.
 #        """
 #        do_something()
+#
 #
 #    def deinit():
 #        """ De-initialise hal, stop any hardware.
@@ -51,6 +64,8 @@ if 'spindle_control' not in locals():
     raise NotImplementedError("hal.spindle_control() not implemented")
 if 'move_linear' not in locals():
     raise NotImplementedError("hal.move_linear() not implemented")
+if 'move_circular' not in locals():
+    raise NotImplementedError("hal.move_circular() not implemented")
 if 'join' not in locals():
     raise NotImplementedError("hal.join() not implemented")
 if 'deinit' not in locals():

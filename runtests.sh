@@ -19,6 +19,7 @@ if ! which $app &> /dev/null; then
     app="./pycnc"
 fi
 res="$($app tests/rects.gcode 2>&1)"
+res="$res$($app tests/circles.gcode 2>&1)"
 res="$res$($app tests/test_parser.gcode 2>&1)"
 if echo "$res" | grep -q -i error; then
   echo "FAILED"

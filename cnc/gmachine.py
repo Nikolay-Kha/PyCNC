@@ -1,9 +1,11 @@
 from __future__ import division
 import time
 import logging
+import math
 
 from cnc import hal
 from cnc.coordinates import Coordinates
+from cnc.enums import *
 from cnc.config import *
 
 
@@ -28,6 +30,8 @@ class GMachine(object):
         self._local = None
         self._convertCoordinates = 0
         self._absoluteCoordinates = 0
+        self._plane = None
+        self._radius = None
         self.reset()
         hal.init()
 
@@ -47,39 +51,138 @@ class GMachine(object):
         self._local = Coordinates(0.0, 0.0, 0.0)
         self._convertCoordinates = 1.0
         self._absoluteCoordinates = True
+        self._plane = PLANE_XY
+        self._radius = Coordinates(0.0, 0.0, 0.0)
 
     def _spindle(self, spindle_speed):
         hal.join()
         hal.spindle_control(100.0 * spindle_speed / SPINDLE_MAX_RPM)
 
-    def _move(self, delta, velocity):
+    def __check_delta(self, delta):
+        pos = self._position + delta
+        if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0),
+               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM)):
+            raise GMachineException("out of effective area")
+
+    def _move_linear(self, delta, velocity):
         delta = delta.round(1.0 / STEPPER_PULSES_PER_MM)
         if delta.is_zero():
             return
-        np = self._position + delta
-        if not np.is_in_aabb(Coordinates(0.0, 0.0, 0.0),
-                             Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM)):
-            raise GMachineException("out of effective area")
+        self.__check_delta(delta)
         hal.move_linear(delta, velocity)
         # save position
-        self._position = np
+        self._position = self._position + delta
+
+    def __quarter(self, pa, pb):
+        if pa >= 0 and pb >= 0:
+            return 1
+        if pa < 0 and pb >= 0:
+            return 2
+        if pa < 0 and pb < 0:
+            return 3
+        if pa >= 0 and pb < 0:
+            return 4
+
+    def __adjust_circle(self, da, db, ra, rb, dir, pa, pb, ma, mb):
+        r = math.sqrt(ra * ra + rb * rb)
+        if r == 0:
+            raise GMachineException("circle radius is zero")
+        l = math.sqrt(da * da + db * db)
+        sq = self.__quarter(-ra, -rb)
+        if l == 0:  # full circle
+            ea = da
+            eb = db
+            eq = 5  # mark as non-existing to check all
+        else:
+            ea = da / l * r + ra
+            eb = db / l * r + rb
+            eq = self.__quarter(ea - ra, eb - rb)
+        # iterate coordinates quarters and check if we fit table
+        q = sq
+        pq = q
+        for _ in range(0, 4):
+            if dir == CW:
+                q -= 1
+            else:
+                q += 1
+            if q <= 0:
+                q = 4
+            elif q >= 5:
+                q = 1
+            if q == eq:
+                break
+            is_raise = False
+            if (pq == 1 and q == 4) or (pq == 4 and q == 1):
+                is_raise = (pa + ra  + r > ma)
+            elif (pq == 1 and q == 2) or (pq == 2 and q == 1):
+                is_raise = (pb + rb + r > mb)
+            elif (pq == 2 and q == 3) or (pq == 3 and q == 2):
+                is_raise = (pa + ra - r < 0)
+            elif (pq == 3 and q == 4) or (pq == 4 and q == 3):
+                is_raise = (pb + rb - r < 0)
+            if is_raise:
+                raise GMachineException("out of effective area")
+            pq = q
+        return ea, eb
+
+    def _circular(self, delta, radius, velocity, direction):
+        delta = delta.round(1.0 / STEPPER_PULSES_PER_MM)
+        self.__check_delta(delta)
+        # get delta vector and put it on circle
+        circle_end = Coordinates(0,0,0)
+        if self._plane == PLANE_XY:
+            circle_end.x, circle_end.y = self.__adjust_circle(delta.x, delta.y,
+                                          radius.x, radius.y, direction,
+                                          self._position.x, self._position.y,
+                                          TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM)
+            circle_end.z = delta.z
+        elif self._plane == PLANE_YZ:
+            circle_end.y, circle_end.z = self.__adjust_circle(delta.y, delta.z,
+                                          radius.y, radius.z, direction,
+                                          self._position.y, self._position.z,
+                                          TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM)
+            circle_end.x = delta.x
+        elif self._plane == PLANE_ZX:
+            circle_end.z, circle_end.x = self.__adjust_circle(delta.z, delta.x,
+                                          radius.z, radius.x, direction,
+                                          self._position.z, self._position.x,
+                                          TABLE_SIZE_Z_MM, TABLE_SIZE_X_MM)
+            circle_end.y = delta.y
+        circle_end = circle_end.round(1.0 / STEPPER_PULSES_PER_MM)
+        hal.move_circular(circle_end, radius, self._plane, velocity, direction)
+        # if finish coords is not on circle, move some distance linearly
+        linear_delta = delta - circle_end
+        if not linear_delta.is_zero():
+            logging.info("Moving additionally {} to finish circle command".
+                         format(linear_delta))
+            hal.move_linear(linear_delta, velocity)
+        # save position
+        self._position = self._position + circle_end + linear_delta
 
     def home(self):
         """ Move head to park position
         """
         d = Coordinates(0, 0, -self._position.z)
-        self._move(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
+        self._move_linear(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
         d = Coordinates(-self._position.x, -self._position.y, 0)
-        self._move(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
+        self._move_linear(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
 
     def position(self):
         """ Return current machine position (after the latest command)
             Note that hal might still be moving motors and in this case
             function will block until motors stops.
             This function for tests only.
+            :return current position.
         """
         hal.join()
         return self._position
+
+    def plane(self):
+        """ Return current plane for circular interpolation. This function for
+            tests only.
+            :return current plane.
+        """
+        return self._plane
 
     def do_command(self, gcode):
         """ Perform action.
@@ -103,6 +206,7 @@ class GMachine(object):
         velocity = gcode.get('F', self._velocity)
         spindle_rpm = gcode.get('S', self._spindle_rpm)
         pause = gcode.get('P', self._pause)
+        radius = gcode.radius(self._radius, self._convertCoordinates)
         # check parameters
         if velocity <= 0 or velocity > STEPPER_MAX_VELOCITY_MM_PER_MIN:
             raise GMachineException("bad feed speed")
@@ -112,12 +216,22 @@ class GMachine(object):
             raise GMachineException("bad delay")
         # select command and run it
         if c == 'G0':  # rapid move
-            self._move(delta, STEPPER_MAX_VELOCITY_MM_PER_MIN)
+            self._move_linear(delta, STEPPER_MAX_VELOCITY_MM_PER_MIN)
         elif c == 'G1':  # linear interpolation
-            self._move(delta, velocity)
+            self._move_linear(delta, velocity)
+        elif c == 'G2':  # circular interpolation, clockwise
+            self._circular(delta, radius, velocity, CW)
+        elif c == 'G3':  # circular interpolation, counterclockwise
+            self._circular(delta, radius, velocity, CCW)
         elif c == 'G4':  # delay in s
             hal.join()
             time.sleep(pause)
+        elif c == 'G17':  # XY plane select
+            self._plane = PLANE_XY
+        elif c == 'G18':  # ZX plane select
+            self._plane = PLANE_ZX
+        elif c == 'G19':  # YZ plane select
+            self._plane = PLANE_YZ
         elif c == 'G20':  # switch to inches
             self._convertCoordinates = 25.4
         elif c == 'G21':  # switch to mm
@@ -150,5 +264,6 @@ class GMachine(object):
         self._velocity = velocity
         self._spindle_rpm = spindle_rpm
         self._pause = pause
+        self._radius = radius
         logging.debug("position {}, {}, {}".format(
             self._position.x, self._position.y, self._position.z))

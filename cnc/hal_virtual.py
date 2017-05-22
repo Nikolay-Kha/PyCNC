@@ -85,6 +85,20 @@ def move_linear(delta, velocity):
                  + "s, estimated " + str(round(generator.total_time_s(), 2)) + "s")
 
 
+def move_circular(delta, radius, plane, velocity, direction):
+    """ Move with circular interpolation.
+    :param delta: finish position delta from the beginning, must be on
+                  circle on specified plane. Zero means full circle.
+    :param radius: vector to center of circle.
+    :param plane: plane to interpolate.
+    :param velocity: velocity in mm per min.
+    :param direction: clockwise or counterclockwise.
+    """
+    logging.info("TODO move_circular {} {} {} with radius {} and velocity {}".
+                 format(plane, delta, direction, radius, velocity))
+    # TODO
+
+
 def join():
     """ Wait till motors work.
     """
