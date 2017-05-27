@@ -26,7 +26,9 @@ class TestPulses(unittest.TestCase):
                                              0, 0, 0),
                                  self.v)
         i = 0
-        for px, py, pz, pe in g:
+        for dir, px, py, pz, pe in g:
+            if dir:
+                continue
             i += 1
             self.assertEqual(px, 0)
             self.assertEqual(py, None)
@@ -40,7 +42,9 @@ class TestPulses(unittest.TestCase):
                                              1.0 / STEPPER_PULSES_PER_MM_E),
                                  self.v)
         i = 0
-        for px, py, pz, pe in g:
+        for dir, px, py, pz, pe in g:
+            if dir:
+                continue
             i += 1
             self.assertEqual(px, 0)
             self.assertEqual(py, 0)
@@ -65,7 +69,9 @@ class TestPulses(unittest.TestCase):
         m = Coordinates(2, 4, 0, 0)
         g = PulseGeneratorLinear(m, self.v)
         i = 0
-        for px, py, pz, pe in g:
+        for dir, px, py, pz, pe in g:
+            if dir:
+                continue
             if i % 2 == 0:
                 self.assertNotEqual(px, None)
             else:
@@ -86,7 +92,9 @@ class TestPulses(unittest.TestCase):
         iz = 0
         ie = 0
         t = -1
-        for px, py, pz, pe in g:
+        for dir, px, py, pz, pe in g:
+            if dir:
+                continue
             if px is not None:
                 ix += 1
             if py is not None:
@@ -112,7 +120,9 @@ class TestPulses(unittest.TestCase):
         g = PulseGeneratorLinear(m, self.v)
         i = 0
         lx = 0
-        for px, py, pz, pe in g:
+        for dir, px, py, pz, pe in g:
+            if dir:
+                continue
             if i == 2:
                 at = px - lx
             if i == TABLE_SIZE_X_MM * STEPPER_PULSES_PER_MM_X / 2:
@@ -123,6 +133,30 @@ class TestPulses(unittest.TestCase):
         self.assertEqual(round(60.0 / lt / STEPPER_PULSES_PER_MM_X), round(self.v))
         self.assertGreater(at, lt)
         self.assertGreater(bt, lt)
+
+    def test_directions(self):
+        # Check if directions are set up correctly.
+        m = Coordinates(1, -2, 3, -4)
+        g = PulseGeneratorLinear(m, self.v)
+        dir_found = False
+        for dir, px, py, pz, pe in g:
+            if dir:
+                # should be once
+                self.assertFalse(dir_found)
+                dir_found = True
+                # check dirs
+                self.assertTrue(px > 0 and py < 0 and pz > 0 and pe < 0)
+        m = Coordinates(-1, 2, -3, 4)
+        g = PulseGeneratorLinear(m, self.v)
+        dir_found = False
+        for dir, px, py, pz, pe in g:
+            if dir:
+                # should be once
+                self.assertFalse(dir_found)
+                dir_found = True
+                # check dirs
+                self.assertTrue(px < 0 and py > 0 and pz < 0 and pe > 0)
+
 
 if __name__ == '__main__':
     unittest.main()

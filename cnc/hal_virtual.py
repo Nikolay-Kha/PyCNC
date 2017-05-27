@@ -37,7 +37,19 @@ def move_linear(delta, velocity):
     dx, dy, dz, de = 0, 0, 0, 0
     mx, my, mz, me = 0, 0, 0, 0
     st = time.time()
-    for tx, ty, tz, te in generator:
+    direction_found = False
+    for dir, tx, ty, tz, te in generator:
+        if dir:
+            direction_found = True
+            assert (tx < 0 and delta.x < 0) or (tx > 0 and delta.x > 0) \
+                   or delta.x == 0
+            assert (ty < 0 and delta.y < 0) or (ty > 0 and delta.y > 0) \
+                   or delta.y == 0
+            assert (tz < 0 and delta.z < 0) or (tz > 0 and delta.z > 0) \
+                   or delta.z == 0
+            assert (te < 0 and delta.e < 0) or (te > 0 and delta.e > 0) \
+                   or delta.e == 0
+            continue
         if tx is not None:
             if tx > mx:
                 mx = tx
@@ -87,6 +99,7 @@ def move_linear(delta, velocity):
         f = list(x for x in (tx, ty, tz, te) if x is not None)
         assert f.count(f[0]) == len(f), "fast forwarded pulse detected"
     pt = time.time()
+    assert direction_found, "direction not found"
     assert ix / STEPPER_PULSES_PER_MM_X == abs(delta.x), "x wrong number of pulses"
     assert iy / STEPPER_PULSES_PER_MM_Y == abs(delta.y), "y wrong number of pulses"
     assert iz / STEPPER_PULSES_PER_MM_Z == abs(delta.z), "z wrong number of pulses"

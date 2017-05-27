@@ -31,7 +31,7 @@ STEP_PIN_MASK_E = 1 << STEPPER_STEP_PIN_E
 
 def init():
     """ Initialize GPIO pins and machine itself, including callibration if
-        needed. Do not return till all procedure is completed.
+        needed. Do not return till all procedures are completed.
     """
     gpio.init(STEPPER_STEP_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
@@ -120,30 +120,33 @@ def move_linear(delta, velocity):
     while dma.is_active():
         time.sleep(0.001)
 
-    # set direction pins
-    if delta.x > 0.0:
-        gpio.clear(STEPPER_DIR_PIN_X)
-    else:
-        gpio.set(STEPPER_DIR_PIN_X)
-    if delta.y > 0.0:
-        gpio.clear(STEPPER_DIR_PIN_Y)
-    else:
-        gpio.set(STEPPER_DIR_PIN_Y)
-    if delta.z > 0.0:
-        gpio.clear(STEPPER_DIR_PIN_Z)
-    else:
-        gpio.set(STEPPER_DIR_PIN_Z)
-    if delta.e > 0.0:
-        gpio.clear(STEPPER_DIR_PIN_E)
-    else:
-        gpio.set(STEPPER_DIR_PIN_E)
-
     # prepare and run dma
     dma.clear()
     prev = 0
     is_ran = False
     st = time.time()
-    for tx, ty, tz, te in generator:
+    for dir, tx, ty, tz, te in generator:
+        if dir:  # set up directions
+            pins_to_set = 0
+            pins_to_clear = 0
+            if tx > 0:
+                pins_to_clear |= 1 << STEPPER_DIR_PIN_X
+            elif tx < 0:
+                pins_to_set |= 1 << STEPPER_DIR_PIN_X
+            if ty > 0:
+                pins_to_clear |= 1 << STEPPER_DIR_PIN_Y
+            elif ty < 0:
+                pins_to_set |= 1 << STEPPER_DIR_PIN_Y
+            if tz > 0:
+                pins_to_clear |= 1 << STEPPER_DIR_PIN_Z
+            elif tz < 0:
+                pins_to_set |= 1 << STEPPER_DIR_PIN_Z
+            if te > 0:
+                pins_to_clear |= 1 << STEPPER_DIR_PIN_E
+            elif te < 0:
+                pins_to_set |= 1 << STEPPER_DIR_PIN_E
+            dma.add_set_clear(pins_to_set, pins_to_clear)
+            continue
         pins = 0
         k = int(round(min(x for x in (tx, ty, tz, te) if x is not None)
                       * US_IN_SECONDS))

@@ -166,6 +166,24 @@ class DMAGPIO(DMAProto):
         self._physmem.write(self.__current_address, "8I", data)
         self.__current_address = next_cb
 
+    def add_set_clear(self, pins_to_set, pins_to_clear):
+        """ Change state of gpio pins.
+        :param pins_to_set: bitwise mask which pins should be set.
+        :param pins_to_clear: bitwise mask which pins should be clear.
+        """
+        next_cb = self.__current_address + self._DMA_CONTROL_BLOCK_SIZE
+        if next_cb > self._physmem.get_size():
+            raise MemoryError("Out of allocated memory.")
+        next1 = self._physmem.get_bus_address() + next_cb
+        source = next1 - 8  # last 8 bytes are padding, use it to store data
+        data = (
+                self._pulse_info, source, self._pulse_destination,
+                    self._pulse_length,
+                self._pulse_stride, next1, pins_to_set, pins_to_clear
+               )
+        self._physmem.write(self.__current_address, "8I", data)
+        self.__current_address = next_cb
+
     def finalize_stream(self):
         """ Mark last added block as the last one.
         """
