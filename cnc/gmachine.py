@@ -22,7 +22,7 @@ class GMachine(object):
     def __init__(self):
         """ Initialization.
         """
-        self._position = Coordinates(0.0, 0.0, 0.0)
+        self._position = Coordinates(0.0, 0.0, 0.0, 0.0)
         # init variables
         self._velocity = 0
         self._spindle_rpm = 0
@@ -48,11 +48,11 @@ class GMachine(object):
         self._velocity = 1000
         self._spindle_rpm = 1000
         self._pause = 0
-        self._local = Coordinates(0.0, 0.0, 0.0)
+        self._local = Coordinates(0.0, 0.0, 0.0, 0.0)
         self._convertCoordinates = 1.0
         self._absoluteCoordinates = True
         self._plane = PLANE_XY
-        self._radius = Coordinates(0.0, 0.0, 0.0)
+        self._radius = Coordinates(0.0, 0.0, 0.0, 0.0)
 
     def _spindle(self, spindle_speed):
         hal.join()
@@ -60,14 +60,15 @@ class GMachine(object):
 
     def __check_delta(self, delta):
         pos = self._position + delta
-        if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0),
-               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM)):
+        if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
+               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM, 0)):
             raise GMachineException("out of effective area")
 
     def _move_linear(self, delta, velocity):
         delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
                             1.0 / STEPPER_PULSES_PER_MM_Y,
-                            1.0 / STEPPER_PULSES_PER_MM_Z)
+                            1.0 / STEPPER_PULSES_PER_MM_Z,
+                            1.0 / STEPPER_PULSES_PER_MM_E)
         if delta.is_zero():
             return
         self.__check_delta(delta)
@@ -130,10 +131,11 @@ class GMachine(object):
     def _circular(self, delta, radius, velocity, direction):
         delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
                             1.0 / STEPPER_PULSES_PER_MM_Y,
-                            1.0 / STEPPER_PULSES_PER_MM_Z)
+                            1.0 / STEPPER_PULSES_PER_MM_Z,
+                            1.0 / STEPPER_PULSES_PER_MM_E)
         self.__check_delta(delta)
         # get delta vector and put it on circle
-        circle_end = Coordinates(0,0,0)
+        circle_end = Coordinates(0, 0, 0, 0)
         if self._plane == PLANE_XY:
             circle_end.x, circle_end.y = self.__adjust_circle(delta.x, delta.y,
                                           radius.x, radius.y, direction,
@@ -152,9 +154,11 @@ class GMachine(object):
                                           self._position.z, self._position.x,
                                           TABLE_SIZE_Z_MM, TABLE_SIZE_X_MM)
             circle_end.y = delta.y
+        circle_end.e = delta.e
         circle_end = circle_end.round(1.0 / STEPPER_PULSES_PER_MM_X,
                                       1.0 / STEPPER_PULSES_PER_MM_Y,
-                                      1.0 / STEPPER_PULSES_PER_MM_Z)
+                                      1.0 / STEPPER_PULSES_PER_MM_Z,
+                                      1.0 / STEPPER_PULSES_PER_MM_E)
         hal.move_circular(circle_end, radius, self._plane, velocity, direction)
         # if finish coords is not on circle, move some distance linearly
         linear_delta = delta - circle_end
@@ -168,9 +172,9 @@ class GMachine(object):
     def home(self):
         """ Move head to park position
         """
-        d = Coordinates(0, 0, -self._position.z)
+        d = Coordinates(0, 0, -self._position.z, 0)
         self._move_linear(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
-        d = Coordinates(-self._position.x, -self._position.y, 0)
+        d = Coordinates(-self._position.x, -self._position.y, 0, 0)
         self._move_linear(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
 
     def position(self):
@@ -207,7 +211,8 @@ class GMachine(object):
             coord = coord + self._local
             delta = coord - self._position
         else:
-            delta = gcode.coordinates(Coordinates(0.0, 0.0, 0.0), self._convertCoordinates)
+            delta = gcode.coordinates(Coordinates(0.0, 0.0, 0.0, 0.0),
+                                      self._convertCoordinates)
             coord = self._position + delta
         velocity = gcode.get('F', self._velocity)
         spindle_rpm = gcode.get('S', self._spindle_rpm)
@@ -245,14 +250,14 @@ class GMachine(object):
         elif c == 'G28':  # home
             self.home()
         elif c == 'G53':  # switch to machine coords
-            self._local = Coordinates(0.0, 0.0, 0.0)
+            self._local = Coordinates(0.0, 0.0, 0.0, 0.0)
         elif c == 'G90':  # switch to absolute coords
             self._absoluteCoordinates = True
         elif c == 'G91':  # switch to relative coords
             self._absoluteCoordinates = False
         elif c == 'G92':  # switch to local coords
             self._local = self._position - \
-                          gcode.coordinates(Coordinates(0.0, 0.0, 0.0),
+                          gcode.coordinates(Coordinates(0.0, 0.0, 0.0, 0.0),
                                             self._convertCoordinates)
         elif c == 'M3':  # spinle on
             self._spindle(spindle_rpm)
@@ -271,5 +276,4 @@ class GMachine(object):
         self._spindle_rpm = spindle_rpm
         self._pause = pause
         self._radius = radius
-        logging.debug("position {}, {}, {}".format(
-            self._position.x, self._position.y, self._position.z))
+        logging.debug("position {}".format(self._position))

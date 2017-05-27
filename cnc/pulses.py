@@ -41,6 +41,7 @@ class PulseGenerator(object):
         self._iteration_x = 0
         self._iteration_y = 0
         self._iteration_z = 0
+        self._iteration_e = 0
         self._acceleration_time_s = 0.0
         self._linear_time_s = 0.0
         self._2Vmax_per_a = 0.0
@@ -60,12 +61,15 @@ class PulseGenerator(object):
         """
         raise NotImplemented
 
-    def _interpolation_function(self, pulse_number):
+    def _interpolation_function(self, ix, iy, iz, ie):
         """ Get function for interpolation path. This function should returned
             values as it is uniform movement. There is only one trick, function
             must be expressed in terms of position, i.e. t = S / V for linear,
             where S - distance would be increment on motor minimum step.
-        :param pulse_number: number of pulse.
+        :param ix: number of pulse for X axis.
+        :param iy: number of pulse for X axis.
+        :param iz: number of pulse for X axis.
+        :param ie: number of pulse for X axis.
         :return: time for each axis or None if movement for axis is finished.
         """
         raise NotImplemented
@@ -82,6 +86,7 @@ class PulseGenerator(object):
         self._iteration_x = 0
         self._iteration_y = 0
         self._iteration_z = 0
+        self._iteration_e = 0
         logging.debug(', '.join("%s: %s" % i for i in vars(self).items()))
         return self
 
@@ -123,15 +128,16 @@ class PulseGenerator(object):
                  the next pulse. If there is no pulses left  None will be
                  returned.
         """
-        tx, ty, tz = self._interpolation_function(self._iteration_x,
-                                                  self._iteration_y,
-                                                  self._iteration_z)
+        tx, ty, tz, te = self._interpolation_function(self._iteration_x,
+                                                      self._iteration_y,
+                                                      self._iteration_z,
+                                                      self._iteration_e)
         # check condition to stop
-        if tx is None and ty is None and tz is None:
+        if tx is None and ty is None and tz is None and te is None:
             raise StopIteration
 
         # convert to real time
-        m = min(x for x in (tx, ty, tz) if x is not None)
+        m = min(x for x in (tx, ty, tz, te) if x is not None)
         am = self._to_accelerated_time(m)
         # sort pulses in time
         if tx is not None:
@@ -152,8 +158,14 @@ class PulseGenerator(object):
             else:
                 tz = am
                 self._iteration_z += 1
+        if te is not None:
+            if te > m:
+                te = None
+            else:
+                te = am
+                self._iteration_e += 1
 
-        return tx, ty, tz
+        return tx, ty, tz, te
 
     def total_time_s(self):
         """ Get total time for movement.
@@ -173,24 +185,24 @@ class PulseGeneratorLinear(PulseGenerator):
         # this class doesn't care about direction
         self._distance_mm = abs(delta_mm)
         # velocity of each axis
-        distance_xyz_mm = self._distance_mm.length()
+        distance_total_mm = self._distance_mm.length()
         self.max_velocity_mm_per_sec = self._distance_mm * (
-            velocity_mm_per_min / SECONDS_IN_MINUTE / distance_xyz_mm)
+            velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm)
         # acceleration time
         self.acceleration_time_s = self.max_velocity_mm_per_sec.find_max() \
                               / STEPPER_MAX_ACCELERATION_MM_PER_S2
         # check if there is enough space to accelerate and brake, adjust time
         # S = a * t^2 / 2
         if STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
-                > distance_xyz_mm:
-            self.acceleration_time_s = math.sqrt(distance_xyz_mm /
+                > distance_total_mm:
+            self.acceleration_time_s = math.sqrt(distance_total_mm /
                                                   STEPPER_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
             # V = a * t -> V = 2 * S / t, take half of total distance for acceleration and braking
             self.max_velocity_mm_per_sec = self._distance_mm / self.acceleration_time_s
         else:
             # calculate linear time
-            linear_distance_mm = distance_xyz_mm\
+            linear_distance_mm = distance_total_mm\
                                       - self.acceleration_time_s ** 2 \
                                       * STEPPER_MAX_ACCELERATION_MM_PER_S2
             self.linear_time_s = linear_distance_mm \
@@ -212,7 +224,7 @@ class PulseGeneratorLinear(PulseGenerator):
         # Linear movement, S = V * t -> t = S / V
         return position_mm / velocity_mm_per_sec
 
-    def _interpolation_function(self, ix, iy, iz):
+    def _interpolation_function(self, ix, iy, iz, ie):
         """ Calculate interpolation values for linear movement, see super class
             for details.
         """
@@ -222,4 +234,6 @@ class PulseGeneratorLinear(PulseGenerator):
                             self.max_velocity_mm_per_sec.y)
         t_z = self.__linear(iz / STEPPER_PULSES_PER_MM_Z, self._distance_mm.z,
                             self.max_velocity_mm_per_sec.z)
-        return t_x, t_y, t_z
+        t_e = self.__linear(ie / STEPPER_PULSES_PER_MM_E, self._distance_mm.e,
+                            self.max_velocity_mm_per_sec.e)
+        return t_x, t_y, t_z, t_e

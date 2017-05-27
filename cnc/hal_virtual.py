@@ -31,13 +31,13 @@ def move_linear(delta, velocity):
     :param velocity: velocity in mm per min
     """
     logging.info("move {} with velocity {}".format(delta, velocity))
-    ix = iy = iz = 0
+    ix = iy = iz = ie = 0
     generator = PulseGeneratorLinear(delta, velocity)
-    lx, ly, lz = None, None, None
-    dx, dy, dz = 0, 0, 0
-    mx, my, mz = 0, 0, 0
+    lx, ly, lz, le = None, None, None, None
+    dx, dy, dz, de = 0, 0, 0, 0
+    mx, my, mz, me = 0, 0, 0, 0
     st = time.time()
-    for tx, ty, tz in generator:
+    for tx, ty, tz, te in generator:
         if tx is not None:
             if tx > mx:
                 mx = tx
@@ -71,16 +71,28 @@ def move_linear(delta, velocity):
             lz = tz
         else:
             dz = None
+        if te is not None:
+            if te > me:
+                me = te
+            te = int(round(te * 1000000))
+            ie += 1
+            if le is not None:
+                de = te - le
+                assert de > 0, "negative or zero time delta detected for e"
+            le = te
+        else:
+            de = None
         # very verbose, uncomment on demand
-        # logging.debug("Iteration {} is {} {} {}".format(max(ix, iy, iz), tx, ty, tz))
-        f = list(x for x in (tx, ty, tz) if x is not None)
+        # logging.debug("Iteration {} is {} {} {} {}".format(max(ix, iy, iz, ie), tx, ty, tz, te))
+        f = list(x for x in (tx, ty, tz, te) if x is not None)
         assert f.count(f[0]) == len(f), "fast forwarded pulse detected"
     pt = time.time()
     assert ix / STEPPER_PULSES_PER_MM_X == abs(delta.x), "x wrong number of pulses"
     assert iy / STEPPER_PULSES_PER_MM_Y == abs(delta.y), "y wrong number of pulses"
     assert iz / STEPPER_PULSES_PER_MM_Z == abs(delta.z), "z wrong number of pulses"
-    assert max(mx, my, mz) <= generator.total_time_s(), "interpolation time or pulses wrong"
-    logging.debug("Did {}, {}, {} iterations".format(ix, iy, iz))
+    assert ie / STEPPER_PULSES_PER_MM_E == abs(delta.e), "e wrong number of pulses"
+    assert max(mx, my, mz, me) <= generator.total_time_s(), "interpolation time or pulses wrong"
+    logging.debug("Did {}, {}, {}, {} iterations".format(ix, iy, iz, ie))
     logging.info("prepared in " + str(round(pt - st, 2)) \
                  + "s, estimated " + str(round(generator.total_time_s(), 2)) + "s")
 

@@ -27,6 +27,7 @@ pwm = rpgpio.DMAPWM()
 STEP_PIN_MASK_X = 1 << STEPPER_STEP_PIN_X
 STEP_PIN_MASK_Y = 1 << STEPPER_STEP_PIN_Y
 STEP_PIN_MASK_Z = 1 << STEPPER_STEP_PIN_Z
+STEP_PIN_MASK_E = 1 << STEPPER_STEP_PIN_E
 
 def init():
     """ Initialize GPIO pins and machine itself, including callibration if
@@ -35,9 +36,11 @@ def init():
     gpio.init(STEPPER_STEP_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.init(STEPPER_STEP_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_DIR_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_DIR_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_DIR_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.init(STEPPER_DIR_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
@@ -130,15 +133,19 @@ def move_linear(delta, velocity):
         gpio.clear(STEPPER_DIR_PIN_Z)
     else:
         gpio.set(STEPPER_DIR_PIN_Z)
+    if delta.e > 0.0:
+        gpio.clear(STEPPER_DIR_PIN_E)
+    else:
+        gpio.set(STEPPER_DIR_PIN_E)
 
     # prepare and run dma
     dma.clear()
     prev = 0
     is_ran = False
     st = time.time()
-    for tx, ty, tz in generator:
+    for tx, ty, tz, te in generator:
         pins = 0
-        k = int(round(min(x for x in (tx, ty, tz) if x is not None)
+        k = int(round(min(x for x in (tx, ty, tz, te) if x is not None)
                       * US_IN_SECONDS))
         if tx is not None:
             pins |= STEP_PIN_MASK_X
@@ -146,6 +153,8 @@ def move_linear(delta, velocity):
             pins |= STEP_PIN_MASK_Y
         if tz is not None:
             pins |= STEP_PIN_MASK_Z
+        if te is not None:
+            pins |= STEP_PIN_MASK_E
         if k - prev > 0:
             dma.add_delay(k - prev)
         dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
