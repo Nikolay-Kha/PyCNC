@@ -44,14 +44,16 @@ class Coordinates(object):
         """
         return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
 
-    def round(self, base):
+    def round(self, base_x, base_y, base_z):
         """ Round values to specified base, ie 0.49 with base 0.25 will be 0.5.
-        :param base: Base.
+        :param base_x: Base for x axis.
+        :param base_y: Base for y axis.
+        :param base_z: Base for z axis.
         :return: New rounded object.
         """
-        return Coordinates(round(self.x / base) * base,
-                           round(self.y / base) * base,
-                           round(self.z / base) * base)
+        return Coordinates(round(self.x / base_x) * base_x,
+                           round(self.y / base_y) * base_y,
+                           round(self.z / base_z) * base_z)
 
     def find_max(self):
         """ Find a maximum value of all values.

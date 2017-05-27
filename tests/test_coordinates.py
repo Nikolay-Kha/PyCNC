@@ -53,11 +53,11 @@ class TestCoordinates(unittest.TestCase):
         # round works in another way then Python's round.
         # This round() rounds digits with specified step.
         c = Coordinates(1.5, -1.4, 3.05)
-        r = c.round(1)
+        r = c.round(1, 1, 1)
         self.assertEqual(r.x, 2.0)
         self.assertEqual(r.y, -1.0)
         self.assertEqual(r.z, 3.0)
-        r = c.round(0.25)
+        r = c.round(0.25, 0.25, 0.25)
         self.assertEqual(r.x, 1.5)
         self.assertEqual(r.y, -1.5)
         self.assertEqual(r.z, 3.0)

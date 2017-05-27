@@ -76,9 +76,9 @@ def move_linear(delta, velocity):
         f = list(x for x in (tx, ty, tz) if x is not None)
         assert f.count(f[0]) == len(f), "fast forwarded pulse detected"
     pt = time.time()
-    assert ix / STEPPER_PULSES_PER_MM == abs(delta.x), "x wrong number of pulses"
-    assert iy / STEPPER_PULSES_PER_MM == abs(delta.y), "y wrong number of pulses"
-    assert iz / STEPPER_PULSES_PER_MM == abs(delta.z), "z wrong number of pulses"
+    assert ix / STEPPER_PULSES_PER_MM_X == abs(delta.x), "x wrong number of pulses"
+    assert iy / STEPPER_PULSES_PER_MM_Y == abs(delta.y), "y wrong number of pulses"
+    assert iz / STEPPER_PULSES_PER_MM_Z == abs(delta.z), "z wrong number of pulses"
     assert max(mx, my, mz) <= generator.total_time_s(), "interpolation time or pulses wrong"
     logging.debug("Did {}, {}, {} iterations".format(ix, iy, iz))
     logging.info("prepared in " + str(round(pt - st, 2)) \

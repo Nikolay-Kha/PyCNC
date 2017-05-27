@@ -52,8 +52,12 @@ def init():
     dma.clear()
     dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
     st = time.time()
-    max_pulses_left = int(1.2 * STEPPER_PULSES_PER_MM * max(
-                      TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM))
+    max_pulses_left = int(1.2 * max(STEPPER_PULSES_PER_MM_X,
+                                    STEPPER_PULSES_PER_MM_Y,
+                                    STEPPER_PULSES_PER_MM_Z) *
+                          max(TABLE_SIZE_X_MM,
+                              TABLE_SIZE_Y_MM,
+                              TABLE_SIZE_Z_MM))
     try:
         while max_pulses_left > 0:
             if (STEP_PIN_MASK_X & pins) != 0 and gpio.read(ENDSTOP_PIN_X) == 0:
@@ -73,7 +77,9 @@ def init():
             dma.run(False)
             # limit velocity at ~10% of top velocity
             time.sleep((1 / 0.10) / (STEPPER_MAX_VELOCITY_MM_PER_MIN
-                                     / 60 * STEPPER_PULSES_PER_MM))
+                                     / 60 * max(STEPPER_PULSES_PER_MM_X,
+                                                STEPPER_PULSES_PER_MM_Y,
+                                                STEPPER_PULSES_PER_MM_Z)))
             max_pulses_left -= 1
             if st is not None:
                 if time.time() - st > 2:

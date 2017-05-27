@@ -22,7 +22,7 @@ class TestPulses(unittest.TestCase):
 
     def test_step(self):
         # Check if PulseGenerator returns correctly single step movement.
-        g = PulseGeneratorLinear(Coordinates(1.0 / STEPPER_PULSES_PER_MM, 0, 0),
+        g = PulseGeneratorLinear(Coordinates(1.0 / STEPPER_PULSES_PER_MM_X, 0, 0),
                                  self.v)
         i = 0
         for px, py, pz in g:
@@ -32,9 +32,9 @@ class TestPulses(unittest.TestCase):
             self.assertEqual(pz, None)
         self.assertEqual(i, 1)
         g = PulseGeneratorLinear(Coordinates(
-                                             1.0 / STEPPER_PULSES_PER_MM,
-                                             1.0 / STEPPER_PULSES_PER_MM,
-                                             1.0 / STEPPER_PULSES_PER_MM),
+                                             1.0 / STEPPER_PULSES_PER_MM_X,
+                                             1.0 / STEPPER_PULSES_PER_MM_Y,
+                                             1.0 / STEPPER_PULSES_PER_MM_Z),
                                  self.v)
         i = 0
         for px, py, pz in g:
@@ -68,7 +68,7 @@ class TestPulses(unittest.TestCase):
             self.assertNotEqual(py, None)
             self.assertEqual(pz, None)
             i += 1
-        self.assertEqual(m.find_max() * STEPPER_PULSES_PER_MM, i)
+        self.assertEqual(m.find_max() * STEPPER_PULSES_PER_MM_Y, i)
 
     def test_pulses_count_and_timings(self):
         # Check if number of pulses is equal to specified distance.
@@ -89,9 +89,9 @@ class TestPulses(unittest.TestCase):
             self.assertEqual(min(v), max(v))
             self.assertLess(t, min(v))
             t = max(v)
-        self.assertEqual(m.x * STEPPER_PULSES_PER_MM, ix)
-        self.assertEqual(m.y * STEPPER_PULSES_PER_MM, iy)
-        self.assertEqual(m.z * STEPPER_PULSES_PER_MM, iz)
+        self.assertEqual(m.x * STEPPER_PULSES_PER_MM_X, ix)
+        self.assertEqual(m.y * STEPPER_PULSES_PER_MM_Y, iy)
+        self.assertEqual(m.z * STEPPER_PULSES_PER_MM_Z, iz)
         self.assertLessEqual(t, g.total_time_s())
 
     def test_acceleration_velocity(self):
@@ -104,12 +104,12 @@ class TestPulses(unittest.TestCase):
         for px, py, pz in g:
             if i == 2:
                 at = px - lx
-            if i == TABLE_SIZE_X_MM * STEPPER_PULSES_PER_MM / 2:
+            if i == TABLE_SIZE_X_MM * STEPPER_PULSES_PER_MM_X / 2:
                 lt = px - lx
             bt = px - lx
             lx = px
             i += 1
-        self.assertEqual(round(60.0 / lt / STEPPER_PULSES_PER_MM), round(self.v))
+        self.assertEqual(round(60.0 / lt / STEPPER_PULSES_PER_MM_X), round(self.v))
         self.assertGreater(at, lt)
         self.assertGreater(bt, lt)
 

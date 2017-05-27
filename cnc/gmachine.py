@@ -65,7 +65,9 @@ class GMachine(object):
             raise GMachineException("out of effective area")
 
     def _move_linear(self, delta, velocity):
-        delta = delta.round(1.0 / STEPPER_PULSES_PER_MM)
+        delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
+                            1.0 / STEPPER_PULSES_PER_MM_Y,
+                            1.0 / STEPPER_PULSES_PER_MM_Z)
         if delta.is_zero():
             return
         self.__check_delta(delta)
@@ -126,7 +128,9 @@ class GMachine(object):
         return ea, eb
 
     def _circular(self, delta, radius, velocity, direction):
-        delta = delta.round(1.0 / STEPPER_PULSES_PER_MM)
+        delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
+                            1.0 / STEPPER_PULSES_PER_MM_Y,
+                            1.0 / STEPPER_PULSES_PER_MM_Z)
         self.__check_delta(delta)
         # get delta vector and put it on circle
         circle_end = Coordinates(0,0,0)
@@ -148,7 +152,9 @@ class GMachine(object):
                                           self._position.z, self._position.x,
                                           TABLE_SIZE_Z_MM, TABLE_SIZE_X_MM)
             circle_end.y = delta.y
-        circle_end = circle_end.round(1.0 / STEPPER_PULSES_PER_MM)
+        circle_end = circle_end.round(1.0 / STEPPER_PULSES_PER_MM_X,
+                                      1.0 / STEPPER_PULSES_PER_MM_Y,
+                                      1.0 / STEPPER_PULSES_PER_MM_Z)
         hal.move_circular(circle_end, radius, self._plane, velocity, direction)
         # if finish coords is not on circle, move some distance linearly
         linear_delta = delta - circle_end

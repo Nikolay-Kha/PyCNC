@@ -216,10 +216,10 @@ class PulseGeneratorLinear(PulseGenerator):
         """ Calculate interpolation values for linear movement, see super class
             for details.
         """
-        t_x = self.__linear(ix / STEPPER_PULSES_PER_MM, self._distance_mm.x,
+        t_x = self.__linear(ix / STEPPER_PULSES_PER_MM_X, self._distance_mm.x,
                             self.max_velocity_mm_per_sec.x)
-        t_y = self.__linear(iy / STEPPER_PULSES_PER_MM, self._distance_mm.y,
+        t_y = self.__linear(iy / STEPPER_PULSES_PER_MM_Y, self._distance_mm.y,
                             self.max_velocity_mm_per_sec.y)
-        t_z = self.__linear(iz / STEPPER_PULSES_PER_MM, self._distance_mm.z,
+        t_z = self.__linear(iz / STEPPER_PULSES_PER_MM_Z, self._distance_mm.z,
                             self.max_velocity_mm_per_sec.z)
         return t_x, t_y, t_z
