@@ -1,12 +1,24 @@
 [![Build Status](https://travis-ci.org/Nikolay-Kha/PyCNC.svg?branch=master)](https://travis-ci.org/Nikolay-Kha/PyCNC)
 
-# PyCNC
-This project bring CNC control for Raspberry Pi or any ARM based Linux boards.
+
+![](https://cloud.githubusercontent.com/assets/8740775/26766365/14796b54-4999-11e7-8ca2-9428a45878ab.png)  
+
+PyCNC is a free open-source high-performance G-code interpreter and
+CNC/3D-printer controller. It can run on a variety of Linux-powered ARM-based
+boards, such as Raspberry Pi, Odroid, Beaglebone and others. This gives you a
+flexibility to pick a board you are most familiar with, and use everything
+Linux has to offer, while keeping all your G-code runtime on the same board
+without a need to have a separate microcontroller for real-time operation.
+Our choice of Python as main programming language significantly reduces code
+base compared to C/C++ projects, reduces boilerplate and microcontroller-specific
+code, and makes the project accessible to a broader audience to tinker with.
+
+# Realtime Motor Control in Linux?
 Typically there is no way to control stepper motors from Linux runtime
 environment due to the lack of real time GPIO control. Even kernel based
-modules can not guarantee precise control of pulses for steppers. There is
-always way out. DMA(Direct Memory Access) is a separated hardware module which
-provides high precision for GPIO outputs. This module can copy bytes which
+modules can not guarantee precise control of pulses for steppers.
+However, we can use a separate hardware module, DMA (Direct Memory Access)
+which provides high precision for GPIO outputs. This module can copy bytes which
 represent GPIO states from RAM buffer directly to GPIO with some clock based
 on main chip internal oscillator without using CPU's cores. Using such approach
 this project generates impulses for moving stepper motors and that is very
