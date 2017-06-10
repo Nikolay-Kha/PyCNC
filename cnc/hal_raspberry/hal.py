@@ -145,8 +145,11 @@ def move(generator):
             dma.add_set_clear(pins_to_set, pins_to_clear)
             continue
         pins = 0
-        k = int(round(min(x for x in (tx, ty, tz, te) if x is not None)
-                      * US_IN_SECONDS))
+        m = None
+        for i in (tx, ty, tz, te):
+            if i is not None and (m is None or i < m):
+                m = i
+        k = int(round(m * US_IN_SECONDS))
         if tx is not None:
             pins |= STEP_PIN_MASK_X
         if ty is not None:
