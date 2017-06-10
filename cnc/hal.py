@@ -17,22 +17,9 @@
 #        do_something()
 #
 #
-#    def move_linear(delta, velocity):
-#        """ Move head to specified distance with specified speed.
-#        :param delta: Coordinated object, delta position in mm
-#        :param velocity: velocity in mm per min
-#        """
-#        do_something()
-#
-#
-#    def move_circular(delta, radius, plane, velocity, direction):
-#        """ Move with circular interpolation.
-#        :param delta: finish position delta from the beginning, must be on
-#                      circle on specified plane. Zero means full circle.
-#        :param radius: vector to center of circle.
-#        :param plane: plane to interpolate.
-#        :param velocity: velocity in mm per min.
-#        :param direction: clockwise or counterclockwise.
+#    def move(generator):
+#        """ Move head to according pulses in PulseGenerator.
+#        :param generator: PulseGenerator object
 #        """
 #        do_something()
 #
@@ -62,12 +49,9 @@ if 'init' not in locals():
     raise NotImplementedError("hal.init() not implemented")
 if 'spindle_control' not in locals():
     raise NotImplementedError("hal.spindle_control() not implemented")
-if 'move_linear' not in locals():
-    raise NotImplementedError("hal.move_linear() not implemented")
-if 'move_circular' not in locals():
-    raise NotImplementedError("hal.move_circular() not implemented")
+if 'move' not in locals():
+    raise NotImplementedError("hal.move() not implemented")
 if 'join' not in locals():
     raise NotImplementedError("hal.join() not implemented")
 if 'deinit' not in locals():
     raise NotImplementedError("hal.deinit() not implemented")
-

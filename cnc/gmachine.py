@@ -7,6 +7,7 @@ from cnc import hal
 from cnc.coordinates import Coordinates
 from cnc.enums import *
 from cnc.config import *
+from cnc.pulses import *
 
 
 class GMachineException(Exception):
@@ -31,7 +32,6 @@ class GMachine(object):
         self._convertCoordinates = 0
         self._absoluteCoordinates = 0
         self._plane = None
-        self._radius = None
         self.reset()
         hal.init()
 
@@ -52,7 +52,6 @@ class GMachine(object):
         self._convertCoordinates = 1.0
         self._absoluteCoordinates = True
         self._plane = PLANE_XY
-        self._radius = Coordinates(0.0, 0.0, 0.0, 0.0)
 
     def _spindle(self, spindle_speed):
         hal.join()
@@ -72,7 +71,10 @@ class GMachine(object):
         if delta.is_zero():
             return
         self.__check_delta(delta)
-        hal.move_linear(delta, velocity)
+
+        logging.info("Moving linearly {}".format(delta))
+        gen = PulseGeneratorLinear(delta, velocity)
+        hal.move(gen)
         # save position
         self._position = self._position + delta
 
@@ -90,16 +92,18 @@ class GMachine(object):
         r = math.sqrt(ra * ra + rb * rb)
         if r == 0:
             raise GMachineException("circle radius is zero")
-        l = math.sqrt(da * da + db * db)
         sq = self.__quarter(-ra, -rb)
-        if l == 0:  # full circle
+        if da == 0 and db == 0:  # full circle
             ea = da
             eb = db
             eq = 5  # mark as non-existing to check all
         else:
-            ea = da / l * r + ra
-            eb = db / l * r + rb
-            eq = self.__quarter(ea - ra, eb - rb)
+            b = (db - rb) / (da - ra)
+            ea = math.copysign(math.sqrt(r * r / (1.0 + abs(b))), da - ra)
+            eb = math.copysign(math.sqrt(r * r - ea * ea), db - rb)
+            eq = self.__quarter(ea, eb)
+            ea += ra
+            eb += rb
         # iterate coordinates quarters and check if we fit table
         q = sq
         pq = q
@@ -133,6 +137,10 @@ class GMachine(object):
                             1.0 / STEPPER_PULSES_PER_MM_Y,
                             1.0 / STEPPER_PULSES_PER_MM_Z,
                             1.0 / STEPPER_PULSES_PER_MM_E)
+        radius = radius.round(1.0 / STEPPER_PULSES_PER_MM_X,
+                              1.0 / STEPPER_PULSES_PER_MM_Y,
+                              1.0 / STEPPER_PULSES_PER_MM_Z,
+                              1.0 / STEPPER_PULSES_PER_MM_E)
         self.__check_delta(delta)
         # get delta vector and put it on circle
         circle_end = Coordinates(0, 0, 0, 0)
@@ -159,13 +167,19 @@ class GMachine(object):
                                       1.0 / STEPPER_PULSES_PER_MM_Y,
                                       1.0 / STEPPER_PULSES_PER_MM_Z,
                                       1.0 / STEPPER_PULSES_PER_MM_E)
-        hal.move_circular(circle_end, radius, self._plane, velocity, direction)
+        logging.info("Moving circularly {} {} {} with radius {}"
+                     " and velocity {}".
+                     format(self._plane, circle_end, direction, radius, velocity))
+        gen = PulseGeneratorCircular(circle_end, radius, self._plane, direction,
+                                     velocity)
+        hal.move(gen)
         # if finish coords is not on circle, move some distance linearly
         linear_delta = delta - circle_end
         if not linear_delta.is_zero():
             logging.info("Moving additionally {} to finish circle command".
                          format(linear_delta))
-            hal.move_linear(linear_delta, velocity)
+            gen = PulseGeneratorLinear(linear_delta, velocity)
+            hal.move(gen)
         # save position
         self._position = self._position + circle_end + linear_delta
 
@@ -217,7 +231,8 @@ class GMachine(object):
         velocity = gcode.get('F', self._velocity)
         spindle_rpm = gcode.get('S', self._spindle_rpm)
         pause = gcode.get('P', self._pause)
-        radius = gcode.radius(self._radius, self._convertCoordinates)
+        radius = gcode.radius(Coordinates(0.0, 0.0, 0.0, 0.0),
+                              self._convertCoordinates)
         # check parameters
         if velocity <= 0 or velocity > STEPPER_MAX_VELOCITY_MM_PER_MIN:
             raise GMachineException("bad feed speed")
@@ -275,5 +290,4 @@ class GMachine(object):
         self._velocity = velocity
         self._spindle_rpm = spindle_rpm
         self._pause = pause
-        self._radius = radius
         logging.debug("position {}".format(self._position))

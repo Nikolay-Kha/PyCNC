@@ -108,14 +108,10 @@ def spindle_control(percent):
         pwm.remove_pin(SPINDLE_PWM_PIN)
 
 
-def move_linear(delta, velocity):
+def move(generator):
     """ Move head to specified position
-    :param delta: coordinated object, delta position in mm
-    :param velocity: velocity in mm per min
+    :param generator: PulseGenerator object.
     """
-    logging.info("move {} with velocity {}".format(delta, velocity))
-    # initialize generator
-    generator = PulseGeneratorLinear(delta, velocity)
     # wait if previous command still works
     while dma.is_active():
         time.sleep(0.001)
@@ -124,6 +120,7 @@ def move_linear(delta, velocity):
     dma.clear()
     prev = 0
     is_ran = False
+    instant = INSTANT_RUN
     st = time.time()
     for dir, tx, ty, tz, te in generator:
         if dir:  # set up directions
@@ -166,14 +163,15 @@ def move_linear(delta, velocity):
         # matter for pulses with 1-2us length.
         prev = k + STEPPER_PULSE_LINGTH_US
         # instant run handling
-        if not is_ran and INSTANT_RUN:
+        if not is_ran and instant:
             if k > 500000:  # wait at least 500 ms is uploaded
                 if time.time() - st > 0.5:
-                    # may be instant run should be canceled here?
                     logging.warn("Buffer preparing for instant run took more "
                                  "time then buffer time")
-                dma.run_stream()
-                is_ran = True
+                    instant = False
+                else:
+                    dma.run_stream()
+                    is_ran = True
     pt = time.time()
     if not is_ran:
         dma.run(False)
@@ -182,20 +180,6 @@ def move_linear(delta, velocity):
 
     logging.info("prepared in " + str(round(pt - st, 2)) + "s, estimated in "
                  + str(round(generator.total_time_s(), 2)) + "s")
-
-
-def move_circular(delta, radius, plane, velocity, direction):
-    """ Move with circular interpolation.
-    :param delta: finish position delta from the beginning, must be on
-                  circle on specified plane. Zero means full circle.
-    :param radius: vector to center of circle.
-    :param plane: plane to interpolate.
-    :param velocity: velocity in mm per min.
-    :param direction: clockwise or counterclockwise.
-    """
-    logging.info("TODO move_circular {} {} {} with radius {} and velocity {}".
-                 format(plane, delta, direction, radius, velocity))
-    # TODO
 
 
 def join():

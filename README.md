@@ -31,8 +31,10 @@ perfect choice for easy development of this project.
 Video demo - [YouTube video](https://youtu.be/vcedo59raS4)
 
 # Current command support
-G0, G1, G4, G20, G21, G28, G53, G90, G91, G92, M2, M3, M5, M30  
-Commands can be easily added, see [gmachine.py](./cnc/gmachine.py) file.
+G0, G1, G2, G3, G4, G17, G18, G19, G20, G21, G28, G53, G90, G91, G92, M2, M3,
+M5, M30  
+Commands can be easily added, see [gmachine.py](./cnc/gmachine.py) file.  
+Four axis are supported - X, Y, Z, E
 
 # Config
 All configs are stored in [config.py](./cnc/config.py) and contain hardware

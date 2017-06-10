@@ -3,9 +3,10 @@ import math
 import logging
 
 from cnc.config import *
+from cnc.enums import *
 from cnc.coordinates import Coordinates
 
-SECONDS_IN_MINUTE = 60
+SECONDS_IN_MINUTE = 60.0
 
 
 class PulseGenerator(object):
@@ -33,10 +34,11 @@ class PulseGenerator(object):
         It's not implemented yet.
     """
 
-    def __init__(self):
+    def __init__(self, delta):
         """ Create object. Do not create directly this object, inherit this class
             and implement interpolation function and related methods.
             All child have to call this method ( super().__init__() ).
+            :param delta: overall movement delta in mm, uses for debug purpose.
         """
         self._iteration_x = 0
         self._iteration_y = 0
@@ -46,20 +48,21 @@ class PulseGenerator(object):
         self._acceleration_time_s = 0.0
         self._linear_time_s = 0.0
         self._2Vmax_per_a = 0.0
+        self._delta = delta
 
     def _get_movement_parameters(self):
-        """ Get for interpolation. This method have to be reimplemented
-            in parent classes and should calculate 3 parameters.
+        """ Get parameters for interpolation. This method have to be
+            reimplemented in parent classes and should calculate 3 parameters.
         :return: Tuple of three values:
                 acceleration_time_s: time for accelerating and breaking motors
                                      during movement
                 linear_time_s: time for uniform movement, it is total movement
                                time minus acceleration and braking time
-                max_axis_velocity_mm_per_sec: maximum velocity of any of axis
-                                              during movement. Even if whole
-                                              movement is accelerated, this
-                                              value should be calculated as top
-                                              velocity.
+                max_axis_velocity_mm_per_sec: maximum axis velocity of all
+                                              axises during movement. Even if
+                                              whole movement is accelerated,
+                                              this value should be calculated
+                                              as top velocity.
         """
         raise NotImplemented
 
@@ -121,9 +124,12 @@ class PulseGenerator(object):
         # Vmax * Tpseudo = Vlinear * t - a * t^2 / 2
         # V on start braking is Vlinear = Taccel * a = Tbreaking * a
         # Vmax * Tpseudo = Tbreaking * a * t - a * t^2 / 2
-        return 2.0 * self._acceleration_time_s + self._linear_time_s \
-               - math.sqrt(self._acceleration_time_s ** 2
-                           - self._2Vmax_per_a * bt)
+        d = self._acceleration_time_s ** 2 - self._2Vmax_per_a * bt
+        if d > 0:
+            d = math.sqrt(d)
+        else:
+            d = 0
+        return 2.0 * self._acceleration_time_s + self._linear_time_s - d
 
     def __next__(self):
         # for python3
@@ -193,6 +199,12 @@ class PulseGenerator(object):
         acceleration_time_s, linear_time_s, _ = self._get_movement_parameters()
         return acceleration_time_s * 2.0 + linear_time_s
 
+    def delta(self):
+        """ Get overall movement distance.
+        :return: Movement distance for each axis in millimeters.
+        """
+        return self._delta
+
 
 class PulseGeneratorLinear(PulseGenerator):
     def __init__(self, delta_mm, velocity_mm_per_min):
@@ -200,7 +212,7 @@ class PulseGeneratorLinear(PulseGenerator):
         :param delta_mm: movement distance of each axis.
         :param velocity_mm_per_min: desired velocity.
         """
-        super(PulseGeneratorLinear, self).__init__()
+        super(PulseGeneratorLinear, self).__init__(delta_mm)
         # this class doesn't care about direction
         self._distance_mm = abs(delta_mm)
         # velocity of each axis
@@ -231,7 +243,7 @@ class PulseGeneratorLinear(PulseGenerator):
         self._direction = math.copysign(1, delta_mm.x), \
                           math.copysign(1, delta_mm.y), \
                           math.copysign(1, delta_mm.z), \
-                          math.copysign(1, delta_mm.e) \
+                          math.copysign(1, delta_mm.e)
 
     def _get_movement_parameters(self):
         """ Return movement parameters, see super class for details.
@@ -262,3 +274,286 @@ class PulseGeneratorLinear(PulseGenerator):
         t_e = self.__linear(ie / STEPPER_PULSES_PER_MM_E, self._distance_mm.e,
                             self.max_velocity_mm_per_sec.e)
         return self._direction, (t_x, t_y, t_z, t_e)
+
+
+class PulseGeneratorCircular(PulseGenerator):
+    def __init__(self, delta, radius, plane, direction, velocity):
+        """ Create pulse generator for circular interpolation.
+            Position calculates based on formulas:
+            R^2 = x^2 + y^2
+            x = R * sin(phi)
+            y = R * cos(phi)
+            phi = omega * t,   2 * pi / omega = 2 * pi * R / V
+            phi = V * t / R
+            omega is angular_velocity.
+            so t = V / R * phi
+            phi can be calculated based on steps position.
+            Each axis can calculate circle phi base on iteration number, the
+            only one difference, that there is four quarters of circle and
+            signs for movement and solving expressions are different. So
+            we use additional variables to control it.
+            :param delta: finish position delta from the beginning, must be on
+                          circle on specified plane. Zero means full circle.
+            :param radius: vector to center of circle.
+            :param plane: plane to interpolate.
+            :param direction: clockwise or counterclockwise.
+            :param velocity: velocity in mm per min.
+        """
+        super(PulseGeneratorCircular, self).__init__(delta)
+        self._plane = plane
+        self._direction = direction
+        velocity = velocity / SECONDS_IN_MINUTE
+        # Get circle start point and end point.
+        if self._plane == PLANE_XY:
+            sa = -radius.x
+            sb = -radius.y
+            ea = sa + delta.x
+            eb = sb + delta.y
+            apm = STEPPER_PULSES_PER_MM_X
+            bpm = STEPPER_PULSES_PER_MM_Y
+        elif self._plane == PLANE_YZ:
+            sa = -radius.y
+            sb = -radius.z
+            ea = sa + delta.y
+            eb = sb + delta.z
+            apm = STEPPER_PULSES_PER_MM_Y
+            bpm = STEPPER_PULSES_PER_MM_Z
+        elif self._plane == PLANE_ZX:
+            sa = -radius.z
+            sb = -radius.x
+            ea = sa + delta.z
+            eb = sb + delta.x
+            apm = STEPPER_PULSES_PER_MM_Z
+            bpm = STEPPER_PULSES_PER_MM_X
+        # adjust radius to fit into axises step.
+        self._radius = round(math.sqrt(sa * sa + sb * sb) * min(apm, bpm)) \
+                       / min(apm, bpm)
+        self._radius2 = self._radius * self._radius
+        self._start_a = sa
+        self._start_b = sb
+        assert round(math.sqrt(ea * ea + eb * eb) * min(apm, bpm)) \
+               / min(apm, bpm) == self._radius, "Wrong end point"
+
+        # Calculate angles and directions.
+        start_angle = self.__angle(sa, sb)
+        end_angle = self.__angle(ea, eb)
+        delta_angle = end_angle - start_angle
+        if delta_angle < 0 or (delta_angle == 0 and direction == CW):
+            delta_angle += 2 * math.pi
+        if direction == CCW:
+            delta_angle -= 2 * math.pi
+        if direction == CW:
+            if start_angle >= math.pi:
+                self._dir_b = 1
+            else:
+                self._dir_b = -1
+            if math.pi / 2 <= start_angle < 3 * math.pi / 2:
+                self._dir_a = -1
+            else:
+                self._dir_a = 1
+        elif direction == CCW:
+            if 0 < start_angle <= math.pi:
+                self._dir_b = 1
+            else:
+                self._dir_b = -1
+            if start_angle <= math.pi / 2 or start_angle > 3 * math.pi / 2:
+                self._dir_a = -1
+            else:
+                self._dir_a = 1
+        self._side_a = self._start_b < 0 or (self._start_b == 0 and self._dir_b < 0)
+        self._side_b = self._start_a < 0 or (self._start_a == 0 and self._dir_a < 0)
+        self._start_angle = start_angle
+        logging.debug("start angle {}, end angle {}, delta {}".format(
+                      start_angle * 180.0 / math.pi,
+                      end_angle * 180.0 / math.pi,
+                      delta_angle * 180.0 / math.pi))
+        delta_angle = abs(delta_angle)
+        self._delta_angle = delta_angle
+
+        # calculate values for interpolation.
+
+        # calculate travel distance for axis in circular move.
+        self._iterations_a = 0
+        self._iterations_b = 0
+        end_angle_m = end_angle
+        if start_angle >= end_angle:
+            end_angle_m += 2 * math.pi
+        rstart = int(start_angle / (math.pi / 2.0))
+        rend =  int(end_angle_m / (math.pi / 2.0))
+        if rend - rstart >= 4:
+            self._iterations_a = 4 * int(self._radius * apm)
+            self._iterations_b = 4 * int(self._radius * apm)
+        else:
+            if rstart == rend:
+                self._iterations_a = int(abs(sa - ea) * apm)
+                self._iterations_b = int(abs(sb - eb) * bpm)
+            else:
+                for r in range(rstart, rend + 1):
+                    i = r
+                    if i >= 4:
+                        i -= 4
+                    if r == rstart:
+                        if i == 0 or i == 2:
+                            self._iterations_a += int(self._radius * apm) - int(abs(sa) * apm)
+                        else:
+                            self._iterations_a += int(abs(sa) * apm)
+                        if i == 1 or i == 3:
+                            self._iterations_b += int(self._radius * bpm) - int(abs(sb) * bpm)
+                        else:
+                            self._iterations_b += int(abs(sb) * bpm)
+                    elif r == rend:
+                        if i == 0 or i == 2:
+                            self._iterations_a += int(abs(ea) * apm)
+                        else:
+                            self._iterations_a += int(self._radius * apm) - int(abs(ea) * apm)
+                        if i == 1 or i == 3:
+                            self._iterations_b += int(abs(eb) * bpm)
+                        else:
+                            self._iterations_b += int(self._radius * bpm) - int(abs(eb) * bpm)
+                    else:
+                        self._iterations_a += int(self._radius * apm)
+                        self._iterations_b += int(self._radius * bpm)
+            if direction == CCW:
+                self._iterations_a = 4 * int(self._radius * apm) - self._iterations_a
+                self._iterations_b = 4 * int(self._radius * bpm) - self._iterations_b
+
+        arc = delta_angle * self._radius
+        e2 = delta.e * delta.e
+        if self._plane == PLANE_XY:
+            self._iterations_3rd = abs(delta.z) * STEPPER_PULSES_PER_MM_Z
+            l = math.sqrt(arc * arc + delta.z * delta.z + e2)
+            self._velocity_3rd = abs(delta.z) / l * velocity
+            self._third_dir = math.copysign(1, delta.z)
+        elif self._plane == PLANE_YZ:
+            self._iterations_3rd = abs(delta.x) * STEPPER_PULSES_PER_MM_X
+            l = math.sqrt(arc * arc + delta.x * delta.x + e2)
+            self._velocity_3rd = abs(delta.x) / l * velocity
+            self._third_dir = math.copysign(1, delta.x)
+        elif self._plane == PLANE_ZX:
+            self._iterations_3rd = abs(delta.y) * STEPPER_PULSES_PER_MM_Y
+            l = math.sqrt(arc * arc + delta.y * delta.y + e2)
+            self._velocity_3rd = abs(delta.y) / l * velocity
+            self._third_dir = math.copysign(1, delta.y)
+        self._iterations_e = abs(delta.e) * STEPPER_PULSES_PER_MM_E
+        # Velocity splits with corresponding distance.
+        cV = arc / l * velocity
+        self._RdivV = self._radius / cV
+        self._e_velocity = abs(delta.e) / l * velocity
+        self._e_dir = math.copysign(1, delta.e)
+        self.max_velocity_mm_per_sec = max(cV, self._velocity_3rd,
+                                           self._e_velocity)
+        self.acceleration_time_s = self.max_velocity_mm_per_sec \
+                                   / STEPPER_MAX_ACCELERATION_MM_PER_S2
+        if STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
+                > l:
+            self.acceleration_time_s = math.sqrt(l /
+                                            STEPPER_MAX_ACCELERATION_MM_PER_S2)
+            self.linear_time_s = 0.0
+            self.max_velocity_mm_per_sec = l / self.acceleration_time_s
+        else:
+            linear_distance_mm = l - self.acceleration_time_s ** 2 \
+                                 * STEPPER_MAX_ACCELERATION_MM_PER_S2
+            self.linear_time_s = linear_distance_mm / velocity
+
+    def __angle(self, a, b):
+        # Calculate angle of entry point (a, b) of circle with center in (0,0)
+        angle = math.acos(b / math.sqrt(a * a + b * b))
+        if a < 0:
+            return 2 * math.pi - angle
+        return angle
+
+    def _get_movement_parameters(self):
+        """ Return movement parameters, see super class for details.
+        """
+        return self.acceleration_time_s, \
+               self.linear_time_s, \
+               self.max_velocity_mm_per_sec
+
+    def __circularHelper(self, start, i, pulses_per_mm, side, dir):
+        np = start + dir * i / pulses_per_mm
+        np = round(np, 10)
+        if np > self._radius:
+            np -= 2 * (np - self._radius)
+            np = round(np, 10)
+            dir = -dir
+            side = not side
+        if np < -self._radius:
+            np -= 2 * (np + self._radius)
+            np = round(np, 10)
+            dir = -dir
+            side = not side
+        if np > self._radius:
+            np -= 2 * (np - self._radius)
+            np = round(np, 10)
+            dir = -dir
+            side = not side
+        return np, dir, side
+
+    def __circularFindTime(self, a, b):
+        angle = self.__angle(a, b)
+        if self._direction == CW:
+            delta_angle = angle - self._start_angle
+        else:
+            delta_angle = self._start_angle - angle
+        if delta_angle <= 0:
+            delta_angle += 2 * math.pi
+        return self._RdivV * delta_angle
+
+    def __circularA(self, i, pulses_per_mm):
+        if i >= self._iterations_a:
+            return self._dir_a, None
+        a, dir, side = self.__circularHelper(self._start_a, i + 1,
+                                             pulses_per_mm, self._side_a,
+                                             self._dir_a)
+        # last item can be slightly more then end angle due to float precision
+        if i + 1 == self._iterations_a:
+            return dir, self._RdivV * self._delta_angle
+        b = math.sqrt(self._radius2 - a * a)
+        if side:
+            b = -b
+        return dir, self.__circularFindTime(a, b)
+
+    def __circularB(self, i, pulses_per_mm):
+        if i >= self._iterations_b:
+            return self._dir_b, None
+        b, dir, side = self.__circularHelper(self._start_b, i + 1,
+                                             pulses_per_mm, self._side_b,
+                                             self._dir_b)
+        # last item can be slightly more then end angle due to float precision
+        if i + 1 == self._iterations_b:
+            return dir, self._RdivV * self._delta_angle
+        a = math.sqrt(self._radius2 - b * b)
+        if side:
+            a = -a
+        return dir, self.__circularFindTime(a, b)
+
+    def __linear(self, i, total_i, pulses_per_mm, velocity):
+        if i >= total_i:
+            return None
+        return i / pulses_per_mm / velocity
+
+    def _interpolation_function(self, ix, iy, iz, ie):
+        """ Calculate interpolation values for linear movement, see super class
+            for details.
+        """
+        if self._plane == PLANE_XY:
+            dx, tx = self.__circularA(ix, STEPPER_PULSES_PER_MM_X)
+            dy, ty = self.__circularB(iy, STEPPER_PULSES_PER_MM_Y)
+            tz = self.__linear(iz, self._iterations_3rd, STEPPER_PULSES_PER_MM_Z,
+                               self._velocity_3rd)
+            dz = self._third_dir
+        elif self._plane == PLANE_YZ:
+            dy, ty = self.__circularA(iy, STEPPER_PULSES_PER_MM_Y)
+            dz, tz = self.__circularB(iz, STEPPER_PULSES_PER_MM_Z)
+            tx = self.__linear(ix, self._iterations_3rd, STEPPER_PULSES_PER_MM_X,
+                               self._velocity_3rd)
+            dx = self._third_dir
+        elif self._plane == PLANE_ZX:
+            dz, tz = self.__circularA(iz, STEPPER_PULSES_PER_MM_Z)
+            dx, tx = self.__circularB(ix, STEPPER_PULSES_PER_MM_X)
+            ty = self.__linear(iy, self._iterations_3rd, STEPPER_PULSES_PER_MM_Y,
+                               self._velocity_3rd)
+            dy = self._third_dir
+        te = self.__linear(ie, self._iterations_e, STEPPER_PULSES_PER_MM_E,
+                           self._e_velocity)
+        return (dx, dy, dz, self._e_dir), (tx, ty, tz, te)

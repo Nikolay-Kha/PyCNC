@@ -2,7 +2,7 @@ from __future__ import division
 import logging
 import time
 
-from cnc.pulses import PulseGeneratorLinear
+from cnc.pulses import PulseGeneratorLinear, PulseGeneratorCircular
 from cnc.config import *
 from cnc.coordinates import Coordinates
 
@@ -25,36 +25,39 @@ def spindle_control(percent):
     logging.info("spindle control: {}%".format(percent))
 
 
-def move_linear(delta, velocity):
-    """ Move head to specified position
-    :param delta: Coordinated object, delta position in mm
-    :param velocity: velocity in mm per min
+def move(generator):
+    """ Move head to specified position.
+    :param generator: PulseGenerator object.
     """
-    logging.info("move {} with velocity {}".format(delta, velocity))
+    delta = generator.delta()
     ix = iy = iz = ie = 0
-    generator = PulseGeneratorLinear(delta, velocity)
     lx, ly, lz, le = None, None, None, None
     dx, dy, dz, de = 0, 0, 0, 0
     mx, my, mz, me = 0, 0, 0, 0
+    cx, cy, cz, ce = 0, 0, 0, 0
+    dirx, diry, dirz, dire = 1, 1, 1, 1
     st = time.time()
     direction_found = False
     for dir, tx, ty, tz, te in generator:
         if dir:
             direction_found = True
-            assert (tx < 0 and delta.x < 0) or (tx > 0 and delta.x > 0) \
-                   or delta.x == 0
-            assert (ty < 0 and delta.y < 0) or (ty > 0 and delta.y > 0) \
-                   or delta.y == 0
-            assert (tz < 0 and delta.z < 0) or (tz > 0 and delta.z > 0) \
-                   or delta.z == 0
-            assert (te < 0 and delta.e < 0) or (te > 0 and delta.e > 0) \
-                   or delta.e == 0
+            dirx, diry, dirz, dire = tx, ty, tz, te
+            if isinstance(generator, PulseGeneratorLinear):
+                assert (tx < 0 and delta.x < 0) or (tx > 0 and delta.x > 0) \
+                       or delta.x == 0
+                assert (ty < 0 and delta.y < 0) or (ty > 0 and delta.y > 0) \
+                       or delta.y == 0
+                assert (tz < 0 and delta.z < 0) or (tz > 0 and delta.z > 0) \
+                       or delta.z == 0
+                assert (te < 0 and delta.e < 0) or (te > 0 and delta.e > 0) \
+                       or delta.e == 0
             continue
         if tx is not None:
             if tx > mx:
                 mx = tx
             tx = int(round(tx * 1000000))
-            ix += 1
+            ix += dirx
+            cx += 1
             if lx is not None:
                 dx = tx - lx
                 assert dx > 0, "negative or zero time delta detected for x"
@@ -65,7 +68,8 @@ def move_linear(delta, velocity):
             if ty > my:
                 my = ty
             ty = int(round(ty * 1000000))
-            iy += 1
+            iy += diry
+            cy += 1
             if ly is not None:
                 dy = ty - ly
                 assert dy > 0, "negative or zero time delta detected for y"
@@ -76,7 +80,8 @@ def move_linear(delta, velocity):
             if tz > mz:
                 mz = tz
             tz = int(round(tz * 1000000))
-            iz += 1
+            iz += dirz
+            cz += 1
             if lz is not None:
                 dz = tz - lz
                 assert dz > 0, "negative or zero time delta detected for z"
@@ -87,7 +92,8 @@ def move_linear(delta, velocity):
             if te > me:
                 me = te
             te = int(round(te * 1000000))
-            ie += 1
+            ie += dire
+            ce += 1
             if le is not None:
                 de = te - le
                 assert de > 0, "negative or zero time delta detected for e"
@@ -100,28 +106,14 @@ def move_linear(delta, velocity):
         assert f.count(f[0]) == len(f), "fast forwarded pulse detected"
     pt = time.time()
     assert direction_found, "direction not found"
-    assert ix / STEPPER_PULSES_PER_MM_X == abs(delta.x), "x wrong number of pulses"
-    assert iy / STEPPER_PULSES_PER_MM_Y == abs(delta.y), "y wrong number of pulses"
-    assert iz / STEPPER_PULSES_PER_MM_Z == abs(delta.z), "z wrong number of pulses"
-    assert ie / STEPPER_PULSES_PER_MM_E == abs(delta.e), "e wrong number of pulses"
+    assert ix / STEPPER_PULSES_PER_MM_X == delta.x, "x wrong number of pulses"
+    assert iy / STEPPER_PULSES_PER_MM_Y == delta.y, "y wrong number of pulses"
+    assert iz / STEPPER_PULSES_PER_MM_Z == delta.z, "z wrong number of pulses"
+    assert ie / STEPPER_PULSES_PER_MM_E == delta.e, "e wrong number of pulses"
     assert max(mx, my, mz, me) <= generator.total_time_s(), "interpolation time or pulses wrong"
-    logging.debug("Did {}, {}, {}, {} iterations".format(ix, iy, iz, ie))
+    logging.debug("Moved {}, {}, {}, {} iterations".format(ix, iy, iz, ie))
     logging.info("prepared in " + str(round(pt - st, 2)) \
                  + "s, estimated " + str(round(generator.total_time_s(), 2)) + "s")
-
-
-def move_circular(delta, radius, plane, velocity, direction):
-    """ Move with circular interpolation.
-    :param delta: finish position delta from the beginning, must be on
-                  circle on specified plane. Zero means full circle.
-    :param radius: vector to center of circle.
-    :param plane: plane to interpolate.
-    :param velocity: velocity in mm per min.
-    :param direction: clockwise or counterclockwise.
-    """
-    logging.info("TODO move_circular {} {} {} with radius {} and velocity {}".
-                 format(plane, delta, direction, radius, velocity))
-    # TODO
 
 
 def join():
