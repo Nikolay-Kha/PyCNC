@@ -1,22 +1,8 @@
-import logging
 import time
 
 from cnc.hal_raspberry import rpgpio
-
-from cnc.pulses import PulseGeneratorLinear
-from cnc.coordinates import Coordinates
+from cnc.pulses import *
 from cnc.config import *
-
-# Stepper motors channel for RPIO
-STEPPER_CHANNEL = 0
-# Since there is no way to add pulses and then start cycle in RPIO,
-# use this delay to start adding pulses to cycle. It can be easily
-# solved by modifying RPIO in a way of adding method to start cycle
-# explicitly.
-RPIO_START_DELAY_US = 200000
-# Since RPIO generate cycles in loop, use this delay to stop RPIO
-# It can be removed if RPIO would allow to run single shot cycle.
-RPIO_STOP_DELAY_US = 5000000
 
 US_IN_SECONDS = 1000000
 
@@ -29,8 +15,9 @@ STEP_PIN_MASK_Y = 1 << STEPPER_STEP_PIN_Y
 STEP_PIN_MASK_Z = 1 << STEPPER_STEP_PIN_Z
 STEP_PIN_MASK_E = 1 << STEPPER_STEP_PIN_E
 
+
 def init():
-    """ Initialize GPIO pins and machine itself, including callibration if
+    """ Initialize GPIO pins and machine itself, including calibration if
         needed. Do not return till all procedures are completed.
     """
     gpio.init(STEPPER_STEP_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
@@ -53,7 +40,7 @@ def init():
     gpio.set(STEPPER_DIR_PIN_Z)
     pins = STEP_PIN_MASK_X | STEP_PIN_MASK_Y | STEP_PIN_MASK_Z
     dma.clear()
-    dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+    dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
     st = time.time()
     max_pulses_left = int(1.2 * max(STEPPER_PULSES_PER_MM_X,
                                     STEPPER_PULSES_PER_MM_Y,
@@ -66,15 +53,15 @@ def init():
             if (STEP_PIN_MASK_X & pins) != 0 and gpio.read(ENDSTOP_PIN_X) == 0:
                 pins &= ~STEP_PIN_MASK_X
                 dma.clear()
-                dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
             if (STEP_PIN_MASK_Y & pins) != 0 and gpio.read(ENDSTOP_PIN_Y) == 0:
                 pins &= ~STEP_PIN_MASK_Y
                 dma.clear()
-                dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
             if (STEP_PIN_MASK_Z & pins) != 0 and gpio.read(ENDSTOP_PIN_Z) == 0:
                 pins &= ~STEP_PIN_MASK_Z
                 dma.clear()
-                dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
             if pins == 0:
                 break
             dma.run(False)
@@ -122,8 +109,8 @@ def move(generator):
     is_ran = False
     instant = INSTANT_RUN
     st = time.time()
-    for dir, tx, ty, tz, te in generator:
-        if dir:  # set up directions
+    for direction, tx, ty, tz, te in generator:
+        if direction:  # set up directions
             pins_to_set = 0
             pins_to_clear = 0
             if tx > 0:
@@ -160,11 +147,11 @@ def move(generator):
             pins |= STEP_PIN_MASK_E
         if k - prev > 0:
             dma.add_delay(k - prev)
-        dma.add_pulse(pins, STEPPER_PULSE_LINGTH_US)
+        dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
         # TODO not a precise way! pulses will set in queue, instead of crossing
         # if next pulse start during pulse length. Though it almost doesn't
         # matter for pulses with 1-2us length.
-        prev = k + STEPPER_PULSE_LINGTH_US
+        prev = k + STEPPER_PULSE_LENGTH_US
         # instant run handling
         if not is_ran and instant:
             if k > 500000:  # wait at least 500 ms is uploaded

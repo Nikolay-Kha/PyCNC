@@ -1,9 +1,8 @@
 import unittest
-import time
 
-from cnc.coordinates import *
 from cnc.gcode import *
 from cnc.gmachine import *
+from cnc.coordinates import *
 
 
 class TestGMachine(unittest.TestCase):
@@ -83,7 +82,8 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G3I0J0K1"))
         self.assertRaises(GMachineException,
-                          m.do_command, GCode.parse_line("G2X99999999Y99999999I1J1"))
+                          m.do_command, GCode.parse_line("G2X99999999Y99999999"
+                                                         "I1J1"))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G2X2Y2Z99999999I1J1"))
         self.assertEqual(m.position(), Coordinates(0, 0, 0, 0))

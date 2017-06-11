@@ -1,18 +1,28 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import readline
-import logging
-logging.basicConfig(level=logging.CRITICAL,
-                    format='[%(levelname)s] %(message)s')
+import atexit
 
+import cnc.logging_config as logging_config
 from cnc.gcode import GCode, GCodeException
 from cnc.gmachine import GMachine, GMachineException
 
-try: # python3 compatibility
+try:  # python3 compatibility
     type(raw_input)
 except NameError:
+    # noinspection PyShadowingBuiltins
     raw_input = input
+
+# configure history file for interactive mode
+history_file = os.path.join(os.environ['HOME'], '.pycnc_history')
+try:
+    readline.read_history_file(history_file)
+except IOError:
+    pass
+readline.set_history_length(1000)
+atexit.register(readline.write_history_file, history_file)
 
 machine = GMachine()
 
@@ -29,6 +39,7 @@ def do_line(line):
 
 
 def main():
+    logging_config.debug_disable()
     try:
         if len(sys.argv) > 1:
             # Read file with gcode
@@ -53,6 +64,6 @@ def main():
     print("\r\nExiting...")
     machine.release()
 
+
 if __name__ == "__main__":
     main()
-

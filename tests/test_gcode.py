@@ -1,7 +1,5 @@
 import unittest
-import math
 
-from cnc.coordinates import *
 from cnc.gcode import *
 
 
@@ -16,7 +14,7 @@ class TestGCode(unittest.TestCase):
         # GCode shouldn't be created with constructor, but since it uses
         # internally, let's check it.
         self.assertRaises(TypeError, GCode)
-        gc = GCode({"X": "1", "Y": "-2", "Z":"0", "E": 99, "G": "1"})
+        gc = GCode({"X": "1", "Y": "-2", "Z": "0", "E": 99, "G": "1"})
         self.assertEqual(gc.coordinates(self.default, 1).x, 1.0)
         self.assertEqual(gc.coordinates(self.default, 1).y, -2.0)
         self.assertEqual(gc.coordinates(self.default, 1).z, 0.0)
@@ -122,7 +120,8 @@ class TestGCode(unittest.TestCase):
         gc = GCode.parse_line("X2 Y(inline comment)7")
         self.assertEqual(gc.coordinates(self.default, 1).x, 2.0)
         self.assertEqual(gc.coordinates(self.default, 1).y, 7.0)
-        gc = GCode.parse_line("X2 Y(inline comment)3 \t(one more comment) \tz4 ; multi comment test")
+        gc = GCode.parse_line("X2 Y(inline comment)3 \t(one more comment) "
+                              "\tz4 ; multi comment test")
         self.assertEqual(gc.coordinates(self.default, 1).x, 2.0)
         self.assertEqual(gc.coordinates(self.default, 1).y, 3.0)
         self.assertEqual(gc.coordinates(self.default, 1).z, 4.0)

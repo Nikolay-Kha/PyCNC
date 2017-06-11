@@ -131,6 +131,7 @@ class TestCoordinates(unittest.TestCase):
 
     def test_abs(self):
         c = Coordinates(-1, -2.5, -99, -23)
+        # noinspection PyTypeChecker
         r = abs(c)
         self.assertEqual(r.x, 1.0)
         self.assertEqual(r.y, 2.5)

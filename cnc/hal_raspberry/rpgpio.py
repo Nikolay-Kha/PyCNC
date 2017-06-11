@@ -20,7 +20,7 @@ class GPIO(object):
         """
         self._mem = PhysicalMemory(PERI_BASE + GPIO_REGISTER_BASE)
 
-    def _pullupdn(self, pin, mode):
+    def _pull_up_dn(self, pin, mode):
         p = self._mem.read_int(GPIO_PULLUPDN_OFFSET)
         p &= ~3
         if mode == self.MODE_INPUT_PULLUP:
@@ -28,49 +28,49 @@ class GPIO(object):
         elif mode == self.MODE_INPUT_PULLDOWN:
             p |= 1
         self._mem.write_int(GPIO_PULLUPDN_OFFSET, p)
-        addr = 4 * int(pin / 32) + GPIO_PULLUPDNCLK_OFFSET
-        self._mem.write_int(addr, 1 << (pin % 32))
+        address = 4 * int(pin / 32) + GPIO_PULLUPDNCLK_OFFSET
+        self._mem.write_int(address, 1 << (pin % 32))
         p = self._mem.read_int(GPIO_PULLUPDN_OFFSET)
         p &= ~3
         self._mem.write_int(GPIO_PULLUPDN_OFFSET, p)
-        self._mem.write_int(addr, 0)
+        self._mem.write_int(address, 0)
 
     def init(self, pin, mode):
         """ Initialize or re-initialize GPIO pin.
         :param pin: pin number.
         :param mode: one of MODE_* variables in this class.
         """
-        addr = 4 * int(pin / 10) + GPIO_FSEL_OFFSET
-        v = self._mem.read_int(addr)
+        address = 4 * int(pin / 10) + GPIO_FSEL_OFFSET
+        v = self._mem.read_int(address)
         v &= ~(7 << ((pin % 10) * 3))  # input value
         if mode == self.MODE_OUTPUT:
             v |= (1 << ((pin % 10) * 3))  # output value, base on input
-            self._mem.write_int(addr, v)
+            self._mem.write_int(address, v)
         else:
-            self._mem.write_int(addr, v)
-            self._pullupdn(pin, mode) 
+            self._mem.write_int(address, v)
+            self._pull_up_dn(pin, mode)
 
     def set(self, pin):
         """ Set pin to HIGH state.
         :param pin: pin number.
         """
-        addr = 4 * int(pin / 32) + GPIO_SET_OFFSET
-        self._mem.write_int(addr, 1 << (pin % 32))
+        address = 4 * int(pin / 32) + GPIO_SET_OFFSET
+        self._mem.write_int(address, 1 << (pin % 32))
 
     def clear(self, pin):
         """ Set pin to LOW state.
         :param pin: pin number.
         """
-        addr = 4 * int(pin / 32) + GPIO_CLEAR_OFFSET
-        self._mem.write_int(addr, 1 << (pin % 32))
+        address = 4 * int(pin / 32) + GPIO_CLEAR_OFFSET
+        self._mem.write_int(address, 1 << (pin % 32))
 
     def read(self, pin):
         """ Read pin current value.
         :param pin: pin number.
         :return: integer value 0 or 1.
         """
-        addr = 4 * int(pin / 32) + GPIO_INPUT_OFFSET
-        v = self._mem.read_int(addr)
+        address = 4 * int(pin / 32) + GPIO_INPUT_OFFSET
+        v = self._mem.read_int(address)
         v &= 1 << (pin % 32)
         if v == 0:
             return 0
@@ -102,20 +102,20 @@ class DMAGPIO(DMAProto):
         self._clock = PhysicalMemory(PERI_BASE + CM_BASE)
 
         # pre calculated variables for control blocks
-        self._delay_info = DMA_TI_NO_WIDE_BURSTS | DMA_SRC_IGNORE \
-                           | DMA_TI_PER_MAP(DMA_TI_PER_MAP_PWM) \
-                           | DMA_TI_DEST_DREQ
+        self._delay_info = (DMA_TI_NO_WIDE_BURSTS | DMA_SRC_IGNORE
+                            | DMA_TI_PER_MAP(DMA_TI_PER_MAP_PWM)
+                            | DMA_TI_DEST_DREQ)
         self._delay_destination = PHYSICAL_PWM_BUS + PWM_FIFO
         self._delay_stride = 0
 
-        self._pulse_info = DMA_TI_NO_WIDE_BURSTS | DMA_TI_TDMODE \
-                           | DMA_TI_WAIT_RESP
+        self._pulse_info = (DMA_TI_NO_WIDE_BURSTS | DMA_TI_TDMODE
+                            | DMA_TI_WAIT_RESP)
         self._pulse_destination = PHYSICAL_GPIO_BUS + GPIO_SET_OFFSET
         # YLENGTH is transfers count and XLENGTH size of each transfer
-        self._pulse_length = DMA_TI_TXFR_LEN_YLENGTH(2) \
-                             | DMA_TI_TXFR_LEN_XLENGTH(4)
-        self._pulse_stride = DMA_TI_STRIDE_D_STRIDE(12) \
-                             | DMA_TI_STRIDE_S_STRIDE(4)
+        self._pulse_length = (DMA_TI_TXFR_LEN_YLENGTH(2)
+                              | DMA_TI_TXFR_LEN_XLENGTH(4))
+        self._pulse_stride = (DMA_TI_STRIDE_D_STRIDE(12)
+                              | DMA_TI_STRIDE_S_STRIDE(4))
 
     def add_pulse(self, pins_mask, length_us):
         """ Add single pulse at the current position.
@@ -126,9 +126,9 @@ class DMAGPIO(DMAProto):
             :param length_us: length in us.
         """
         next_cb = self.__current_address + 3 * self._DMA_CONTROL_BLOCK_SIZE
-        if next_cb > self._physmem.get_size():
+        if next_cb > self._phys_memory.get_size():
             raise MemoryError("Out of allocated memory.")
-        next3 = next_cb + self._physmem.get_bus_address()
+        next3 = next_cb + self._phys_memory.get_bus_address()
         next2 = next3 - self._DMA_CONTROL_BLOCK_SIZE
         next1 = next2 - self._DMA_CONTROL_BLOCK_SIZE
 
@@ -137,16 +137,17 @@ class DMAGPIO(DMAProto):
         source3 = next3 - 8
 
         data = (
+            # control block 1 - set
             self._pulse_info, source1, self._pulse_destination,
-                self._pulse_length,
-            self._pulse_stride, next1, pins_mask, 0,
+            self._pulse_length, self._pulse_stride, next1, pins_mask, 0,
+            # control block 2 - delay
             self._delay_info, 0, self._delay_destination, length2,
             self._delay_stride, next2, 0, 0,
+            # control block 3 - clear
             self._pulse_info, source3, self._pulse_destination,
-                 self._pulse_length,
-            self._pulse_stride, next3, 0, pins_mask
+            self._pulse_length, self._pulse_stride, next3, 0, pins_mask
                 )
-        self._physmem.write(self.__current_address, "24I", data)
+        self._phys_memory.write(self.__current_address, "24I", data)
         self.__current_address = next_cb
 
     def add_delay(self, delay_us):
@@ -154,16 +155,16 @@ class DMAGPIO(DMAProto):
             :param delay_us: delay in us.
         """
         next_cb = self.__current_address + self._DMA_CONTROL_BLOCK_SIZE
-        if next_cb > self._physmem.get_size():
+        if next_cb > self._phys_memory.get_size():
             raise MemoryError("Out of allocated memory.")
-        next1 = self._physmem.get_bus_address() + next_cb
+        next1 = self._phys_memory.get_bus_address() + next_cb
         source = next1 - 8  # last 8 bytes are padding, use it to store data
         length = delay_us << 4  # * 16
         data = (
                 self._delay_info, source, self._delay_destination, length,
                 self._delay_stride, next1, 0, 0
                )
-        self._physmem.write(self.__current_address, "8I", data)
+        self._phys_memory.write(self.__current_address, "8I", data)
         self.__current_address = next_cb
 
     def add_set_clear(self, pins_to_set, pins_to_clear):
@@ -172,23 +173,23 @@ class DMAGPIO(DMAProto):
         :param pins_to_clear: bitwise mask which pins should be clear.
         """
         next_cb = self.__current_address + self._DMA_CONTROL_BLOCK_SIZE
-        if next_cb > self._physmem.get_size():
+        if next_cb > self._phys_memory.get_size():
             raise MemoryError("Out of allocated memory.")
-        next1 = self._physmem.get_bus_address() + next_cb
+        next1 = self._phys_memory.get_bus_address() + next_cb
         source = next1 - 8  # last 8 bytes are padding, use it to store data
         data = (
                 self._pulse_info, source, self._pulse_destination,
-                    self._pulse_length,
-                self._pulse_stride, next1, pins_to_set, pins_to_clear
+                self._pulse_length, self._pulse_stride, next1,
+                pins_to_set, pins_to_clear
                )
-        self._physmem.write(self.__current_address, "8I", data)
+        self._phys_memory.write(self.__current_address, "8I", data)
         self.__current_address = next_cb
 
     def finalize_stream(self):
         """ Mark last added block as the last one.
         """
-        self._physmem.write_int(self.__current_address + 20
-                                - self._DMA_CONTROL_BLOCK_SIZE, 0)
+        self._phys_memory.write_int(self.__current_address + 20
+                                    - self._DMA_CONTROL_BLOCK_SIZE, 0)
         logging.info("DMA took {}MB of memory".
                      format(round(self.__current_address / 1024.0 / 1024.0, 2)))
 
@@ -201,9 +202,10 @@ class DMAGPIO(DMAProto):
         self._clock.write_int(CM_PWM_CNTL, CM_PASSWORD | CM_SRC_PLLD)  # disable
         while (self._clock.read_int(CM_PWM_CNTL) & CM_CNTL_BUSY) != 0:
             time.sleep(0.00001)  # 10 us, wait until BUSY bit is clear
-        self._clock.write_int(CM_PWM_DIV, CM_PASSWORD | CM_DIV_VALUE(5))  # 100MHz
-        self._clock.write_int(CM_PWM_CNTL, CM_PASSWORD | CM_SRC_PLLD |
-                                           CM_CNTL_ENABLE)
+        self._clock.write_int(CM_PWM_DIV,
+                              CM_PASSWORD | CM_DIV_VALUE(5))  # 100MHz
+        self._clock.write_int(CM_PWM_CNTL,
+                              CM_PASSWORD | CM_SRC_PLLD | CM_CNTL_ENABLE)
 
         self._pwm.write_int(PWM_RNG1, 100)
         self._pwm.write_int(PWM_DMAC, PWM_DMAC_ENAB
@@ -220,9 +222,9 @@ class DMAGPIO(DMAProto):
             raise RuntimeError("Nothing was added.")
         # fix 'next' field in previous control block
         if loop:
-            self._physmem.write_int(self.__current_address + 20
-                                    - self._DMA_CONTROL_BLOCK_SIZE,
-                                    self._physmem.get_bus_address())
+            self._phys_memory.write_int(self.__current_address + 20
+                                        - self._DMA_CONTROL_BLOCK_SIZE,
+                                        self._phys_memory.get_bus_address())
         else:
             self.finalize_stream()
         self.run_stream()
@@ -267,17 +269,17 @@ class DMAPWM(DMAProto):
                 self.__add_control_block(i * self._DMA_CONTROL_BLOCK_SIZE,
                                          GPIO_CLEAR_OFFSET)
         # loop
-        self._physmem.write_int((self._TOTAL_NUMBER_OF_BLOCKS - 1)
-                                * self._DMA_CONTROL_BLOCK_SIZE + 20,
-                                self._physmem.get_bus_address())
+        self._phys_memory.write_int((self._TOTAL_NUMBER_OF_BLOCKS - 1)
+                                    * self._DMA_CONTROL_BLOCK_SIZE + 20,
+                                    self._phys_memory.get_bus_address())
         self._gpio = PhysicalMemory(PERI_BASE + GPIO_REGISTER_BASE)
 
     def __add_control_block(self, address, offset):
-        ba = self._physmem.get_bus_address() + address
+        ba = self._phys_memory.get_bus_address() + address
         data = (
             DMA_TI_NO_WIDE_BURSTS | DMA_TI_WAIT_RESP
             | DMA_TI_DEST_INC | DMA_TI_SRC_INC,  # info
-            ba + self._DMA_DATA_OFFSET,  # source, last 8 bytes are padding, use it to store data
+            ba + self._DMA_DATA_OFFSET,  # source, use padding for storing data
             PHYSICAL_GPIO_BUS + offset,  # destination
             4,  # length
             0,  # stride
@@ -285,7 +287,7 @@ class DMAPWM(DMAProto):
             0,  # padding, uses as data storage
             0  # padding
         )
-        self._physmem.write(address, "8I", data)
+        self._phys_memory.write(address, "8I", data)
 
     def add_pin(self, pin, duty_cycle):
         """ Add pin to PMW with specified duty cycle.
@@ -302,14 +304,14 @@ class DMAPWM(DMAProto):
             self._gpio.write_int(GPIO_SET_OFFSET, 1 << pin)
             self._clear_pins[pin] = self._DMA_DATA_OFFSET
         else:
-            value = self._physmem.read_int(self._DMA_DATA_OFFSET)
+            value = self._phys_memory.read_int(self._DMA_DATA_OFFSET)
             value |= 1 << pin
-            self._physmem.write_int(self._DMA_DATA_OFFSET, value)
-            clear_address = block_number * self._DMA_CONTROL_BLOCK_SIZE \
-                            + self._DMA_DATA_OFFSET
-            value = self._physmem.read_int(clear_address)
+            self._phys_memory.write_int(self._DMA_DATA_OFFSET, value)
+            clear_address = (block_number * self._DMA_CONTROL_BLOCK_SIZE
+                             + self._DMA_DATA_OFFSET)
+            value = self._phys_memory.read_int(clear_address)
             value |= 1 << pin
-            self._physmem.write_int(clear_address, value)
+            self._phys_memory.write_int(clear_address, value)
             self._clear_pins[pin] = clear_address
             if not self.is_active():
                 super(DMAPWM, self)._run_dma()
@@ -321,12 +323,12 @@ class DMAPWM(DMAProto):
         assert 0 <= pin < 32
         if pin in self._clear_pins.keys():
             address = self._clear_pins[pin]
-            value = self._physmem.read_int(address)
+            value = self._phys_memory.read_int(address)
             value &= ~(1 << pin)
-            self._physmem.write_int(address, value)
-            value = self._physmem.read_int(self._DMA_DATA_OFFSET)
+            self._phys_memory.write_int(address, value)
+            value = self._phys_memory.read_int(self._DMA_DATA_OFFSET)
             value &= ~(1 << pin)
-            self._physmem.write_int(self._DMA_DATA_OFFSET, value)
+            self._phys_memory.write_int(self._DMA_DATA_OFFSET, value)
             del self._clear_pins[pin]
             self._gpio.write_int(GPIO_CLEAR_OFFSET, 1 << pin)
         if len(self._clear_pins) == 0 and self.is_active():

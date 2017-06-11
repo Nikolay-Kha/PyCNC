@@ -24,5 +24,5 @@ g90
 g92x100y100z100
 m111
 g1x98y98z98
-(head should be in zero position, and last movent with 500 mm/min velocity)
+(head should be in zero position, and last movement with 500 mm/min velocity)
 m2

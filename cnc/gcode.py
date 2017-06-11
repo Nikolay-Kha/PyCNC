@@ -1,11 +1,11 @@
 import re
-import math
 
 from cnc.coordinates import Coordinates
-from cnc.enums import Plane
 
-gpattern = re.compile('([A-Z])([-+]?[0-9.]+)')
-cleanpattern = re.compile('\s+|\(.*?\)|;.*') # white spaces and comments start with ';' and in '()'
+# extract letter-digit pairs
+g_pattern = re.compile('([A-Z])([-+]?[0-9.]+)')
+# white spaces and comments start with ';' and in '()'
+clean_pattern = re.compile('\s+|\(.*?\)|;.*')
 
 
 class GCodeException(Exception):
@@ -24,20 +24,20 @@ class GCode(object):
         """
         self.params = params
 
-    def get(self, argname, default=None, multiply=1.0):
+    def get(self, arg_name, default=None, multiply=1.0):
         """ Get value from gcode line.
-        :param argname: Value name.
+        :param arg_name: Value name.
         :param default: Default value if value doesn't exist.
         :param multiply: if value exist, multiply it by this value.
         :return: Value if exists or default otherwise.
         """
-        if argname not in self.params:
+        if arg_name not in self.params:
             return default
-        return float(self.params[argname]) * multiply
+        return float(self.params[arg_name]) * multiply
 
     def coordinates(self, default, multiply):
         """ Get X, Y and Z values as Coord object.
-        :param default: Default values, if any of coords is not specified.
+        :param default: Default values, if any of coordinates is not specified.
         :param multiply: If value exist, multiply it by this value.
         :return: Coord object.
         """
@@ -82,16 +82,17 @@ class GCode(object):
         :return: gcode objects.
         """
         line = line.upper()
-        line = re.sub(cleanpattern, '', line)
+        line = re.sub(clean_pattern, '', line)
         if len(line) == 0:
             return None
         if line[0] == '%':
             return None
-        m = gpattern.findall(line)
+        m = g_pattern.findall(line)
         if not m:
             raise GCodeException('gcode not found')
         if len(''.join(["%s%s" % i for i in m])) != len(line):
             raise GCodeException('extra characters in line')
+        # noinspection PyTypeChecker
         params = dict(m)
         if len(params) != len(m):
             raise GCodeException('duplicated gcode entries')

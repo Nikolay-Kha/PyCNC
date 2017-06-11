@@ -1,13 +1,10 @@
 from __future__ import division
 import time
-import logging
-import math
 
+import cnc.logging_config as logging_config
 from cnc import hal
-from cnc.coordinates import Coordinates
-from cnc.enums import *
-from cnc.config import *
 from cnc.pulses import *
+from cnc.coordinates import *
 
 
 class GMachineException(Exception):
@@ -53,6 +50,7 @@ class GMachine(object):
         self._absoluteCoordinates = True
         self._plane = PLANE_XY
 
+    # noinspection PyMethodMayBeStatic
     def _spindle(self, spindle_speed):
         hal.join()
         hal.spindle_control(100.0 * spindle_speed / SPINDLE_MAX_RPM)
@@ -60,7 +58,8 @@ class GMachine(object):
     def __check_delta(self, delta):
         pos = self._position + delta
         if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
-               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM, 0)):
+                              Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
+                                          TABLE_SIZE_Z_MM, 0)):
             raise GMachineException("out of effective area")
 
     def _move_linear(self, delta, velocity):
@@ -78,7 +77,8 @@ class GMachine(object):
         # save position
         self._position = self._position + delta
 
-    def __quarter(self, pa, pb):
+    @staticmethod
+    def __quarter(pa, pb):
         if pa >= 0 and pb >= 0:
             return 1
         if pa < 0 and pb >= 0:
@@ -88,7 +88,7 @@ class GMachine(object):
         if pa >= 0 and pb < 0:
             return 4
 
-    def __adjust_circle(self, da, db, ra, rb, dir, pa, pb, ma, mb):
+    def __adjust_circle(self, da, db, ra, rb, direction, pa, pb, ma, mb):
         r = math.sqrt(ra * ra + rb * rb)
         if r == 0:
             raise GMachineException("circle radius is zero")
@@ -108,7 +108,7 @@ class GMachine(object):
         q = sq
         pq = q
         for _ in range(0, 4):
-            if dir == CW:
+            if direction == CW:
                 q -= 1
             else:
                 q += 1
@@ -120,7 +120,7 @@ class GMachine(object):
                 break
             is_raise = False
             if (pq == 1 and q == 4) or (pq == 4 and q == 1):
-                is_raise = (pa + ra  + r > ma)
+                is_raise = (pa + ra + r > ma)
             elif (pq == 1 and q == 2) or (pq == 2 and q == 1):
                 is_raise = (pb + rb + r > mb)
             elif (pq == 2 and q == 3) or (pq == 3 and q == 2):
@@ -145,22 +145,25 @@ class GMachine(object):
         # get delta vector and put it on circle
         circle_end = Coordinates(0, 0, 0, 0)
         if self._plane == PLANE_XY:
-            circle_end.x, circle_end.y = self.__adjust_circle(delta.x, delta.y,
-                                          radius.x, radius.y, direction,
-                                          self._position.x, self._position.y,
-                                          TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM)
+            circle_end.x, circle_end.y = \
+                self.__adjust_circle(delta.x, delta.y, radius.x, radius.y,
+                                     direction, self._position.x,
+                                     self._position.y, TABLE_SIZE_X_MM,
+                                     TABLE_SIZE_Y_MM)
             circle_end.z = delta.z
         elif self._plane == PLANE_YZ:
-            circle_end.y, circle_end.z = self.__adjust_circle(delta.y, delta.z,
-                                          radius.y, radius.z, direction,
-                                          self._position.y, self._position.z,
-                                          TABLE_SIZE_Y_MM, TABLE_SIZE_Z_MM)
+            circle_end.y, circle_end.z = \
+                self.__adjust_circle(delta.y, delta.z, radius.y, radius.z,
+                                     direction, self._position.y,
+                                     self._position.z, TABLE_SIZE_Y_MM,
+                                     TABLE_SIZE_Z_MM)
             circle_end.x = delta.x
         elif self._plane == PLANE_ZX:
-            circle_end.z, circle_end.x = self.__adjust_circle(delta.z, delta.x,
-                                          radius.z, radius.x, direction,
-                                          self._position.z, self._position.x,
-                                          TABLE_SIZE_Z_MM, TABLE_SIZE_X_MM)
+            circle_end.z, circle_end.x = \
+                self.__adjust_circle(delta.z, delta.x, radius.z, radius.x,
+                                     direction, self._position.z,
+                                     self._position.x, TABLE_SIZE_Z_MM,
+                                     TABLE_SIZE_X_MM)
             circle_end.y = delta.y
         circle_end.e = delta.e
         circle_end = circle_end.round(1.0 / STEPPER_PULSES_PER_MM_X,
@@ -168,8 +171,8 @@ class GMachine(object):
                                       1.0 / STEPPER_PULSES_PER_MM_Z,
                                       1.0 / STEPPER_PULSES_PER_MM_E)
         logging.info("Moving circularly {} {} {} with radius {}"
-                     " and velocity {}".
-                     format(self._plane, circle_end, direction, radius, velocity))
+                     " and velocity {}".format(self._plane, circle_end,
+                                               direction, radius, velocity))
         gen = PulseGeneratorCircular(circle_end, radius, self._plane, direction,
                                      velocity)
         hal.move(gen)
@@ -227,7 +230,7 @@ class GMachine(object):
         else:
             delta = gcode.coordinates(Coordinates(0.0, 0.0, 0.0, 0.0),
                                       self._convertCoordinates)
-            coord = self._position + delta
+            # coord = self._position + delta
         velocity = gcode.get('F', self._velocity)
         spindle_rpm = gcode.get('S', self._spindle_rpm)
         pause = gcode.get('P', self._pause)
@@ -274,14 +277,14 @@ class GMachine(object):
             self._local = self._position - \
                           gcode.coordinates(Coordinates(0.0, 0.0, 0.0, 0.0),
                                             self._convertCoordinates)
-        elif c == 'M3':  # spinle on
+        elif c == 'M3':  # spindle on
             self._spindle(spindle_rpm)
         elif c == 'M5':  # spindle off
             self._spindle(0)
         elif c == 'M2' or c == 'M30':  # program finish, reset everything.
             self.reset()
         elif c == 'M111':  # enable debug
-            logging.getLogger().setLevel(logging.DEBUG)
+            logging_config.debug_enable()
         elif c is None:  # command not specified(for example, just F was passed)
             pass
         else:

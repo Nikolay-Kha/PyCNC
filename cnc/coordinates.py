@@ -21,8 +21,8 @@ class Coordinates(object):
         """ Check if all coordinates are zero.
         :return: boolean value.
         """
-        return self.x == 0.0 and self.y == 0.0 and self.z == 0.0 and \
-               self.e == 0.0
+        return (self.x == 0.0 and self.y == 0.0 and self.z == 0.0
+                and self.e == 0.0)
 
     def is_in_aabb(self, p1, p2):
         """ Check coordinates are in aabb(Axis-Aligned Bounding Box).
@@ -31,12 +31,12 @@ class Coordinates(object):
         :param p2: Second point in Coord object.
         :return: boolean value.
         """
-        minx, maxx = sorted((p1.x, p2.x))
-        miny, maxy = sorted((p1.y, p2.y))
-        minz, maxz = sorted((p1.z, p2.z))
-        if self.x < minx or self.y < miny or self.z < minz:
+        min_x, max_x = sorted((p1.x, p2.x))
+        min_y, max_y = sorted((p1.y, p2.y))
+        min_z, max_z = sorted((p1.z, p2.z))
+        if self.x < min_x or self.y < min_y or self.z < min_z:
             return False
-        if self.x > maxx or self.y > maxy or self.z > maxz:
+        if self.x > max_x or self.y > max_y or self.z > max_z:
             return False
         return True
 
@@ -76,12 +76,21 @@ class Coordinates(object):
                            self.z - other.z, self.e - other.e)
 
     def __mul__(self, v):
+        """
+        @rtype: Coordinates
+        """
         return Coordinates(self.x * v, self.y * v, self.z * v, self.e * v)
 
     def __div__(self, v):
+        """
+        @rtype: Coordinates
+        """
         return Coordinates(self.x / v, self.y / v, self.z / v, self.e / v)
 
     def __truediv__(self, v):
+        """
+        @rtype: Coordinates
+        """
         return Coordinates(self.x / v, self.y / v, self.z / v, self.e / v)
 
     def __eq__(self, other):

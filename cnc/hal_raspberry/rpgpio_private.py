@@ -57,32 +57,18 @@ DMA_CS_END = 1 << 1
 DMA_CS_ACTIVE = 1 << 0
 DMA_TI_PER_MAP_PWM = 5
 DMA_TI_PER_MAP_PCM = 2
-
-def DMA_TI_PER_MAP(x):
-    return x << 16
-
-def DMA_TI_TXFR_LEN_YLENGTH(y):
-    return (y & 0x3fff) << 16
-
-def DMA_TI_TXFR_LEN_XLENGTH(x):
-    return x & 0xffff
-
-def DMA_TI_STRIDE_D_STRIDE(x):
-    return (x & 0xffff) << 16
-
-def DMA_TI_STRIDE_S_STRIDE(x):
-    return x & 0xffff
-
-def DMA_CS_PRIORITY(x):
-    return (x & 0xf) << 16
-
-def DMA_CS_PANIC_PRIORITY(x):
-    return (x & 0xf) << 20
+DMA_TI_PER_MAP = (lambda x: x << 16)
+DMA_TI_TXFR_LEN_YLENGTH = (lambda y: (y & 0x3fff) << 16)
+DMA_TI_TXFR_LEN_XLENGTH = (lambda x: x & 0xffff)
+DMA_TI_STRIDE_D_STRIDE = (lambda x: (x & 0xffff) << 16)
+DMA_TI_STRIDE_S_STRIDE = (lambda x: x & 0xffff)
+DMA_CS_PRIORITY = (lambda x: (x & 0xf) << 16)
+DMA_CS_PANIC_PRIORITY = (lambda x: (x & 0xf) << 20)
 
 # hardware PWM controller registers
 PWM_BASE = 0x0020C000
 PHYSICAL_PWM_BUS = 0x7E000000 + PWM_BASE
-PWM_CTL= 0x00
+PWM_CTL = 0x00
 PWM_DMAC = 0x08
 PWM_RNG1 = 0x10
 PWM_RNG2 = 0x20
@@ -95,12 +81,8 @@ PWM_CTL_CLRF = 1 << 6
 PWM_CTL_USEF1 = 1 << 5
 PWM_CTL_USEF2 = 1 << 13
 PWM_DMAC_ENAB = 1 << 31
-
-def PWM_DMAC_PANIC(x):
-    return x << 8
-
-def PWM_DMAC_DREQ(x):
-    return x
+PWM_DMAC_PANIC = (lambda x: x << 8)
+PWM_DMAC_DREQ = (lambda x: x)
 
 # clock manager module
 CM_BASE = 0x00101000
@@ -113,14 +95,13 @@ CM_CNTL_ENABLE = 1 << 4
 CM_CNTL_BUSY = 1 << 7
 CM_SRC_OSC = 1   # 19.2 MHz
 CM_SRC_PLLC = 5  # 1000 MHz
-CM_SRC_PLLD = 6  #  500 MHz
-CM_SRC_HDMI = 7  #  216 MHz
-
-def CM_DIV_VALUE(x):
-    return x << 12
+CM_SRC_PLLD = 6  # 500 MHz
+CM_SRC_HDMI = 7  # 216 MHz
+CM_DIV_VALUE = (lambda x: x << 12)
 
 
 class PhysicalMemory(object):
+    # noinspection PyArgumentList,PyArgumentList
     def __init__(self, phys_address, size=PAGE_SIZE):
         """ Create object which maps physical memory to Python's mmap object.
         :param phys_address: based address of physical memory
@@ -128,14 +109,14 @@ class PhysicalMemory(object):
         self._size = size
         phys_address -= phys_address % PAGE_SIZE
         fd = self._open_dev("/dev/mem")
-        self._rmap = mmap.mmap(fd, size, flags=mmap.MAP_SHARED,
-                               prot=mmap.PROT_READ | mmap.PROT_WRITE,
-                               offset=phys_address)
+        self._memmap = mmap.mmap(fd, size, flags=mmap.MAP_SHARED,
+                                 prot=mmap.PROT_READ | mmap.PROT_WRITE,
+                                 offset=phys_address)
         self._close_dev(fd)
         atexit.register(self.cleanup)
 
     def cleanup(self):
-        self._rmap.close()
+        self._memmap.close()
 
     @staticmethod
     def _open_dev(name):
@@ -149,13 +130,13 @@ class PhysicalMemory(object):
         os.close(fd)
 
     def write_int(self, address, int_value):
-        ctypes.c_uint32.from_buffer(self._rmap, address).value = int_value
+        ctypes.c_uint32.from_buffer(self._memmap, address).value = int_value
 
     def write(self, address, fmt, data):
-        struct.pack_into(fmt, self._rmap, address, *data)
+        struct.pack_into(fmt, self._memmap, address, *data)
 
     def read_int(self, address):
-        return ctypes.c_uint32.from_buffer(self._rmap, address).value
+        return ctypes.c_uint32.from_buffer(self._memmap, address).value
 
     def get_size(self):
         return self._size
@@ -177,8 +158,8 @@ class CMAPhysicalMemory(PhysicalMemory):
         if self._handle == 0:
             raise OSError("No memory to allocate with /dev/vcio")
         # lock memory
-        self._busmem = self._send_data(0x3000d, [self._handle])
-        if self._busmem == 0:
+        self._bus_memory = self._send_data(0x3000d, [self._handle])
+        if self._bus_memory == 0:
             # memory should be freed in __del__
             raise OSError("Failed to lock memory with /dev/vcio")
         # print("allocate {} at {} (bus {})".format(size,
@@ -206,10 +187,10 @@ class CMAPhysicalMemory(PhysicalMemory):
         return data[5]
 
     def get_bus_address(self):
-        return self._busmem
+        return self._bus_memory
 
     def get_phys_address(self):
-        return self._busmem & ~0xc0000000
+        return self._bus_memory & ~0xc0000000
 
 
 class DMAProto(object):
@@ -219,7 +200,7 @@ class DMAProto(object):
         """
         self._DMA_CHANNEL = dma_channel
         # allocate buffer for control blocks
-        self._physmem = CMAPhysicalMemory(memory_size)
+        self._phys_memory = CMAPhysicalMemory(memory_size)
         # prepare dma registers memory map
         self._dma = PhysicalMemory(PERI_BASE + DMA_BASE)
 
@@ -228,7 +209,8 @@ class DMAProto(object):
         """
         address = 0x100 * self._DMA_CHANNEL
         self._dma.write_int(address + DMA_CS, DMA_CS_END)
-        self._dma.write_int(address + DMA_CONBLK_AD, self._physmem.get_bus_address())
+        self._dma.write_int(address + DMA_CONBLK_AD,
+                            self._phys_memory.get_bus_address())
         cs = DMA_CS_PRIORITY(7) | DMA_CS_PANIC_PRIORITY(7) | DMA_CS_DISDEBUG
         self._dma.write_int(address + DMA_CS, cs)
         cs |= DMA_CS_ACTIVE

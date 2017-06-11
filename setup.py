@@ -9,7 +9,7 @@ except(IOError, ImportError):
 from setuptools import setup, find_packages
 setup(
     name="pycnc",
-    version="0.1.2",
+    version="0.1.3",
     packages=find_packages(),
     scripts=['pycnc'],
 
