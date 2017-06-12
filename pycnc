@@ -4,4 +4,3 @@ import cnc.main
 
 if __name__ == "__main__":
     cnc.main.main()
-
