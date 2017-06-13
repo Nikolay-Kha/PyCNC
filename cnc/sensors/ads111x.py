@@ -27,14 +27,13 @@ else:
 def measure(channel):
     """
     Measure voltage on chip input.
+    Raises OSError(Errno 121) "Remote I/O error" on reading error.
     :param channel: chip channel to use.
-    :return: Voltage in Volts, None if no device connected.
+    :return: Voltage in Volts.
     """
     global __i2c_dev
     if channel < 0 or channel > 3:
         raise ValueError("Wrong channel")
-    if __i2c_dev < 0:
-        return None
     # configure
     data = struct.pack(">BH",
                        0x01,  # config register
