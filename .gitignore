@@ -1,9 +1,6 @@
 *.pyc
 __pycache__
-.iws
-workspace.xml
-tasks.xml
-.idea/dictionaries
+.idea
 pycnc.tar.bz2
 build
 *.egg-info/
