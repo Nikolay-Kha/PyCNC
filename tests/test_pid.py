@@ -49,6 +49,11 @@ class TestPid(unittest.TestCase):
                         msg="failed to heat in 10 minutes, final temperature "
                             "{}/{}".format(temperature, target_temp))
 
+    def test_simple(self):
+        pid = Pid(50, 0)
+        self.assertEqual(0, pid.update(100, 1))
+        self.assertEqual(1, pid.update(0, 2))
+
     def test_bed(self):
         # check if bed typical temperatures can be reached in simulation
         for target in range(50, 101, 10):
