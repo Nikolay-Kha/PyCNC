@@ -23,7 +23,7 @@ Circuit diagram for this module should be like this:
      _|_              _|_
      GND              GND
 
-Since ads111x uses internal reference voltage, 3.3V should be well regulated.
+Since ads111x uses internal reference voltage, Vcc should be well regulated.
 """
 
 from __future__ import division
