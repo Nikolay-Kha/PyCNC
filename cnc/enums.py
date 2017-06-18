@@ -21,6 +21,9 @@ class Enum(object):
     def __str__(self):
         return self._str
 
+    def __hash__(self):
+        return self.value
+
 
 class Plane(Enum):
     """ Enum for choosing plane for circular interpolation.
