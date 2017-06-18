@@ -3,28 +3,31 @@ import math
 
 
 class Pid(object):
-    # PID coefficients
-    P = 0.422
-    I = 0.208
-    D = 0.014
-    WINDUP_LIMIT = 3.0
     FIX_ACCURACY = 0.01
     FIX_TIME_S = 2.5
 
-    def __init__(self, target_value, start_time=time.time()):
+    def __init__(self, target_value, coefficients, start_time=None):
         """
         Proportional-integral-derivative controller implementation.
         :param target_value: value which PID should achieve.
+        :param coefficients: dict with "P", "I" and "D" coefficients.
         :param start_time: start time, current system time by default.
         """
-        self._last_time = start_time
+        if start_time is None:
+            self._last_time = time.time()
+        else:
+            self._last_time = start_time
         self._target_value = target_value
+        self.P = coefficients["P"]
+        self.I = coefficients["I"]
+        self.D = coefficients["D"]
+        self.WINDUP_LIMIT = 1.0 / self.I
         self._integral = 0
         self._last_error = 0
         self._is_target_fixed = False
         self._target_fix_timer = None
 
-    def update(self, current_value, current_time=time.time()):
+    def update(self, current_value, current_time=None):
         """
         Update PID with new current value.
         :param current_value: current value.
@@ -32,6 +35,8 @@ class Pid(object):
                              time if not specified.
         :return: value in range 0..1.0 which represents PID output.
         """
+        if current_time is None:
+            current_time = time.time()
         delta_time = current_time - self._last_time
         self._last_time = current_time
         error = self._target_value - current_value
@@ -60,16 +65,21 @@ class Pid(object):
         return res
 
     def is_fixed(self):
-        """
-        Check if target value is reached and PID maintains this value.
+        """ Check if target value is reached and PID maintains this value.
         :return: boolean value
         """
         return self._is_target_fixed
 
+    def target_value(self):
+        """ Get target value.
+        :return: value.
+        """
+        return self._target_value
+
 
 # for test purpose, see details in corresponding test file
 if __name__ == "__main__":
-    p = Pid(230, 0)
+    p = Pid(230, {"P": 0.1000, "I": 0.0274, "D": 0.2055}, 0)
     c = 0.0039
     h = 3.09
     t0 = 25

@@ -20,6 +20,15 @@ class TestGCode(unittest.TestCase):
         self.assertEqual(gc.coordinates(self.default, 1).z, 0.0)
         self.assertEqual(gc.coordinates(self.default, 1).e, 99.0)
 
+    def test_has(self):
+        gc = GCode.parse_line("g1X2Y3z4E5F50")
+        self.assertTrue(gc.has("G"))
+        self.assertTrue(gc.has("X"))
+        self.assertTrue(gc.has("Y"))
+        self.assertTrue(gc.has("Z"))
+        self.assertTrue(gc.has("E"))
+        self.assertTrue(gc.has("F"))
+
     def test_parser(self):
         gc = GCode.parse_line("G1X2Y-3Z4E1.5")
         self.assertEqual(gc.command(), "G1")

@@ -24,6 +24,14 @@ class GCode(object):
         """
         self.params = params
 
+    def has(self, arg_name):
+        """
+        Check if value is specified.
+        :param arg_name: Value name.
+        :return: boolean value.
+        """
+        return arg_name in self.params
+
     def get(self, arg_name, default=None, multiply=1.0):
         """ Get value from gcode line.
         :param arg_name: Value name.

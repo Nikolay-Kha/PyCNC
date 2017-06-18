@@ -1,10 +1,11 @@
 from __future__ import division
-import time
 
 import cnc.logging_config as logging_config
 from cnc import hal
 from cnc.pulses import *
 from cnc.coordinates import *
+from cnc.heater import *
+from cnc.enums import *
 
 
 class GMachineException(Exception):
@@ -29,14 +30,18 @@ class GMachine(object):
         self._convertCoordinates = 0
         self._absoluteCoordinates = 0
         self._plane = None
+        self._fan_state = False
+        self._heaters = dict()
         self.reset()
         hal.init()
 
     def release(self):
         """ Return machine to original position and free all resources.
         """
-        self._spindle(0)
         self.home()
+        self._spindle(0)
+        for h in self._heaters:
+            self._heaters[h].stop()
         hal.deinit()
 
     def reset(self):
@@ -54,6 +59,35 @@ class GMachine(object):
     def _spindle(self, spindle_speed):
         hal.join()
         hal.spindle_control(100.0 * spindle_speed / SPINDLE_MAX_RPM)
+
+    def _fan(self, state):
+        hal.fan_control(state)
+        self._fan_state = state
+
+    def _heat(self, heater, temperature, wait):
+        # check if sensor is ok
+        if heater == HEATER_EXTRUDER:
+            measure = hal.get_extruder_temperature
+            control = hal.extruder_heater_control
+            coefficients = EXTRUDER_PID
+        elif heater == HEATER_BED:
+            measure = hal.get_bed_temperature
+            control = hal.bed_heater_control
+            coefficients = BED_PID
+        else:
+            raise GMachineException("unknown heater")
+        try:
+            measure()
+        except (IOError, OSError):
+            raise GMachineException("can not measure temperature")
+        if heater in self._heaters:
+            self._heaters[heater].stop()
+            del self._heaters[heater]
+        if temperature != 0:
+            self._heaters[heater] = Heater(temperature, coefficients, measure,
+                                           control)
+            if wait:
+                self._heaters[heater].wait()
 
     def __check_delta(self, delta):
         pos = self._position + delta
@@ -211,12 +245,37 @@ class GMachine(object):
         """
         return self._plane
 
+    def fan_state(self):
+        """ Check if fan is on.
+            :return True if fan is on, False otherwise.
+        """
+        return self._fan_state
+
+    def __get_target_temperature(self, heater):
+        if heater not in self._heaters:
+            return 0
+        return self._heaters[heater].target_temperature()
+
+    def extruder_target_temperature(self):
+        """ Return desired extruder temperature.
+            :return Temperature in Celsius, 0 if disabled.
+        """
+        return self.__get_target_temperature(HEATER_EXTRUDER)
+
+    def bed_target_temperature(self):
+        """ Return desired bed temperature.
+            :return Temperature in Celsius, 0 if disabled.
+        """
+        return self.__get_target_temperature(HEATER_BED)
+
     def do_command(self, gcode):
         """ Perform action.
         :param gcode: GCode object which represent one gcode line
+        :return String if any answer require, None otherwise.
         """
         if gcode is None:
-            return
+            return None
+        answer = None
         logging.debug("got command " + str(gcode.params))
         # read command
         c = gcode.command()
@@ -232,15 +291,12 @@ class GMachine(object):
                                       self._convertCoordinates)
             # coord = self._position + delta
         velocity = gcode.get('F', self._velocity)
-        spindle_rpm = gcode.get('S', self._spindle_rpm)
         pause = gcode.get('P', self._pause)
         radius = gcode.radius(Coordinates(0.0, 0.0, 0.0, 0.0),
                               self._convertCoordinates)
         # check parameters
         if velocity <= 0 or velocity > STEPPER_MAX_VELOCITY_MM_PER_MIN:
             raise GMachineException("bad feed speed")
-        if spindle_rpm < 0 or spindle_rpm > SPINDLE_MAX_RPM:
-            raise GMachineException("bad spindle speed")
         if pause < 0:
             raise GMachineException("bad delay")
         # select command and run it
@@ -278,19 +334,63 @@ class GMachine(object):
                           gcode.coordinates(Coordinates(0.0, 0.0, 0.0, 0.0),
                                             self._convertCoordinates)
         elif c == 'M3':  # spindle on
+            spindle_rpm = gcode.get('S', self._spindle_rpm)
+            if spindle_rpm < 0 or spindle_rpm > SPINDLE_MAX_RPM:
+                raise GMachineException("bad spindle speed")
             self._spindle(spindle_rpm)
+            self._spindle_rpm = spindle_rpm
         elif c == 'M5':  # spindle off
             self._spindle(0)
         elif c == 'M2' or c == 'M30':  # program finish, reset everything.
             self.reset()
+        # extruder and bed heaters control
+        elif c == 'M104' or c == 'M109' or c == 'M140' or c == 'M190':
+            if c == 'M104' or c == 'M109':
+                heater = HEATER_EXTRUDER
+            elif c == 'M140' or c == 'M190':
+                heater = HEATER_BED
+            else:
+                raise Exception("Unexpected heater command")
+            wait = c == 'M109' or c == 'M190'
+            if not gcode.has("S"):
+                raise GMachineException("temperature is not specified")
+            t = gcode.get('S', 0)
+            if ((heater == HEATER_EXTRUDER and t > EXTRUDER_MAX_TEMPERATURE) or
+                    (heater == HEATER_BED and t > BED_MAX_TEMPERATURE) or
+                    t < MIN_TEMPERATURE) and t != 0:
+                raise GMachineException("bad temperature")
+            self._heat(heater, t, wait)
+        elif c == 'M105':  # get temperature
+            try:
+                et = hal.get_extruder_temperature()
+            except (IOError, OSError):
+                et = None
+            try:
+                bt = hal.get_bed_temperature()
+            except (IOError, OSError):
+                bt = None
+            if et is None and bt is None:
+                raise GMachineException("can not measure temperature")
+            answer = "E:{} B:{}".format(et, bt)
+        elif c == 'M106':  # fan control
+            if gcode.get('S', 1) != 0:
+                self._fan(True)
+            else:
+                self._fan(False)
+        elif c == 'M107':  # turn off fan
+            self._fan(False)
         elif c == 'M111':  # enable debug
             logging_config.debug_enable()
+        elif c == 'M114':  # get current position
+            hal.join()
+            p = self.position()
+            answer = "X:{} Y:{} Z:{} E:{}".format(p.x, p.y, p.z, p.e)
         elif c is None:  # command not specified(for example, just F was passed)
             pass
         else:
             raise GMachineException("unknown command")
         # save parameters on success
         self._velocity = velocity
-        self._spindle_rpm = spindle_rpm
         self._pause = pause
         logging.debug("position {}".format(self._position))
+        return answer

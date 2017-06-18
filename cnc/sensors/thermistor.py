@@ -49,6 +49,7 @@ Rinf = R0 * math.exp(-BETA / (T0 + CELSIUS_TO_KELVIN))
 def get_temperature(channel):
     """
     Measure temperature on specified channel.
+    Can raise OSError or IOError on any issue with sensor.
     :param channel: ads111x channel.
     :return: temperature in Celsius
     """
@@ -65,6 +66,10 @@ def get_temperature(channel):
 if __name__ == "__main__":
     while True:
         for i in range(0, 4):
-            print("T{}={}".format(i, get_temperature(i)))
+            try:
+                t = get_temperature(i)
+            except (IOError, OSError):
+                t = None
+            print("T{}={}".format(i, t))
         print("-----------------------------")
         time.sleep(0.5)

@@ -3,11 +3,14 @@ import unittest
 from cnc.gcode import *
 from cnc.gmachine import *
 from cnc.coordinates import *
+from cnc.heater import *
+from cnc.pid import *
 
 
 class TestGMachine(unittest.TestCase):
     def setUp(self):
-        pass
+        Pid.FIX_TIME_S = 0.01
+        Heater.LOOP_INTERVAL_S = 0.001
 
     def tearDown(self):
         pass
@@ -191,6 +194,58 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("M3S999999999"))
         m.do_command(GCode.parse_line("M5"))
+
+    def test_m104_m109(self):
+        m = GMachine()
+        m.do_command(GCode.parse_line("M104S"+str(MIN_TEMPERATURE)))
+        self.assertEqual(m.extruder_target_temperature(), MIN_TEMPERATURE)
+        m.do_command(GCode.parse_line("M104S0"))
+        self.assertEqual(m.extruder_target_temperature(), 0)
+        # blocking heating should be called with max temperature since virtual
+        # hal always return this temperature.
+        m.do_command(GCode.parse_line("M109S" + str(EXTRUDER_MAX_TEMPERATURE)))
+        self.assertEqual(m.extruder_target_temperature(),
+                         EXTRUDER_MAX_TEMPERATURE)
+        m.do_command(GCode.parse_line("M104S0"))
+        self.assertEqual(m.extruder_target_temperature(), 0)
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line("M104S"+str(MIN_TEMPERATURE - 1)))
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line("M109S"
+                                           + str(EXTRUDER_MAX_TEMPERATURE + 1)))
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line("M109"))
+
+    def test_m106_m107(self):
+        m = GMachine()
+        m.do_command(GCode.parse_line("M106"))
+        self.assertTrue(m.fan_state())
+        m.do_command(GCode.parse_line("M106S0"))
+        self.assertFalse(m.fan_state())
+        m.do_command(GCode.parse_line("M106S123"))
+        self.assertTrue(m.fan_state())
+        m.do_command(GCode.parse_line("M107"))
+        self.assertFalse(m.fan_state())
+
+    def test_m140_m190(self):
+        m = GMachine()
+        m.do_command(GCode.parse_line("M140S"+str(MIN_TEMPERATURE)))
+        self.assertEqual(m.bed_target_temperature(), MIN_TEMPERATURE)
+        m.do_command(GCode.parse_line("M140S0"))
+        self.assertEqual(m.bed_target_temperature(), 0)
+        # blocking heating should be called with max temperature since virtual
+        # hal always return this temperature.
+        m.do_command(GCode.parse_line("M190S" + str(BED_MAX_TEMPERATURE)))
+        self.assertEqual(m.bed_target_temperature(), BED_MAX_TEMPERATURE)
+        m.do_command(GCode.parse_line("M190S0"))
+        self.assertEqual(m.bed_target_temperature(), 0)
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line("M140S"+str(MIN_TEMPERATURE - 1)))
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line("M190S"
+                                           + str(BED_MAX_TEMPERATURE + 1)))
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line("M190"))
 
 
 if __name__ == '__main__':

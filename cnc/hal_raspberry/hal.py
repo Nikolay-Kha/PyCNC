@@ -3,6 +3,7 @@ import time
 from cnc.hal_raspberry import rpgpio
 from cnc.pulses import *
 from cnc.config import *
+from cnc.sensors import thermistor
 
 US_IN_SECONDS = 1000000
 
@@ -32,7 +33,13 @@ def init():
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(SPINDLE_PWM_PIN, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.init(FAN_PIN, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.init(EXTRUDER_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.init(BED_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.clear(SPINDLE_PWM_PIN)
+    gpio.clear(FAN_PIN)
+    gpio.clear(EXTRUDER_HEATER_PIN)
+    gpio.clear(BED_HEATER_PIN)
 
     # calibration
     gpio.set(STEPPER_DIR_PIN_X)
@@ -86,13 +93,60 @@ def init():
 
 def spindle_control(percent):
     """ Spindle control implementation.
-    :param percent: spindle speed in percent. If 0, stop the spindle.
+    :param percent: spindle speed in percent 0..100. If 0, stop the spindle.
     """
     logging.info("spindle control: {}%".format(percent))
     if percent > 0:
         pwm.add_pin(SPINDLE_PWM_PIN, percent)
     else:
         pwm.remove_pin(SPINDLE_PWM_PIN)
+
+
+def fan_control(on_off):
+    """
+    Cooling fan control.
+    :param on_off: boolean value if fan is enabled.
+    """
+    if on_off:
+        logging.info("Fan is on")
+        gpio.set(FAN_PIN)
+    else:
+        logging.info("Fan is off")
+        gpio.clear(FAN_PIN)
+
+
+def extruder_heater_control(percent):
+    """ Extruder heater control.
+    :param percent: heater power in percent 0..100. 0 turns heater off.
+    """
+    if percent > 0:
+        pwm.add_pin(EXTRUDER_HEATER_PIN, percent)
+    else:
+        pwm.remove_pin(EXTRUDER_HEATER_PIN)
+
+
+def bed_heater_control(percent):
+    """ Hot bed heater control.
+    :param percent: heater power in percent 0..100. 0 turns heater off.
+    """
+    if percent > 0:
+        pwm.add_pin(BED_HEATER_PIN, percent)
+    else:
+        pwm.remove_pin(BED_HEATER_PIN)
+
+
+def get_extruder_temperature():
+    """ Measure extruder temperature.
+    :return: temperature in Celsius.
+    """
+    return thermistor.get_temperature(EXTRUDER_TEMPERATURE_SENSOR_CHANNEL)
+
+
+def get_bed_temperature():
+    """ Measure bed temperature.
+    :return: temperature in Celsius.
+    """
+    return thermistor.get_temperature(BED_TEMPERATURE_SENSOR_CHANNEL)
 
 
 def move(generator):
@@ -186,3 +240,7 @@ def deinit():
     """
     join()
     pwm.remove_all()
+    gpio.clear(SPINDLE_PWM_PIN)
+    gpio.clear(FAN_PIN)
+    gpio.clear(EXTRUDER_HEATER_PIN)
+    gpio.clear(BED_HEATER_PIN)

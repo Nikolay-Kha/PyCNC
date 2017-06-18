@@ -30,11 +30,14 @@ machine = GMachine()
 def do_line(line):
     try:
         g = GCode.parse_line(line)
-        machine.do_command(g)
+        res = machine.do_command(g)
     except (GCodeException, GMachineException) as e:
         print('ERROR ' + str(e))
         return False
-    print('OK')
+    if res is not None:
+        print('OK ' + res)
+    else:
+        print('OK')
     return True
 
 
