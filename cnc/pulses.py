@@ -212,11 +212,10 @@ class PulseGeneratorLinear(PulseGenerator):
         :param velocity_mm_per_min: desired velocity.
         """
         super(PulseGeneratorLinear, self).__init__(delta_mm)
-        # this class doesn't care about direction
-        self._distance_mm = abs(delta_mm)  # type: Coordinates
+        distance_mm = abs(delta_mm)  # type: Coordinates
         # velocity of each axis
-        distance_total_mm = self._distance_mm.length()
-        self.max_velocity_mm_per_sec = self._distance_mm * (
+        distance_total_mm = distance_mm.length()
+        self.max_velocity_mm_per_sec = distance_mm * (
             velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm)
         # acceleration time
         self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max()
@@ -231,7 +230,7 @@ class PulseGeneratorLinear(PulseGenerator):
             self.linear_time_s = 0.0
             # V = a * t -> V = 2 * S / t, take half of total distance for
             # acceleration and braking
-            self.max_velocity_mm_per_sec = (self._distance_mm
+            self.max_velocity_mm_per_sec = (distance_mm
                                             / self.acceleration_time_s)
         else:
             # calculate linear time
@@ -240,6 +239,10 @@ class PulseGeneratorLinear(PulseGenerator):
                                  * STEPPER_MAX_ACCELERATION_MM_PER_S2
             self.linear_time_s = (linear_distance_mm
                                   / self.max_velocity_mm_per_sec.length())
+        self._total_pulses_x = round(distance_mm.x * STEPPER_PULSES_PER_MM_X)
+        self._total_pulses_y = round(distance_mm.y * STEPPER_PULSES_PER_MM_Y)
+        self._total_pulses_z = round(distance_mm.z * STEPPER_PULSES_PER_MM_Z)
+        self._total_pulses_e = round(distance_mm.e * STEPPER_PULSES_PER_MM_E)
         self._direction = (math.copysign(1, delta_mm.x),
                            math.copysign(1, delta_mm.y),
                            math.copysign(1, delta_mm.z),
@@ -253,26 +256,26 @@ class PulseGeneratorLinear(PulseGenerator):
                 self.max_velocity_mm_per_sec.find_max())
 
     @staticmethod
-    def __linear(position_mm, distance_mm, velocity_mm_per_sec):
+    def __linear(i, pulses_per_mm, total_pulses, velocity_mm_per_sec):
         """ Helper function for linear movement.
         """
         # check if need to calculate for this axis
-        if distance_mm == 0.0 or position_mm >= distance_mm:
+        if total_pulses == 0.0 or i >= total_pulses:
             return None
         # Linear movement, S = V * t -> t = S / V
-        return position_mm / velocity_mm_per_sec
+        return i / pulses_per_mm / velocity_mm_per_sec
 
     def _interpolation_function(self, ix, iy, iz, ie):
         """ Calculate interpolation values for linear movement, see super class
             for details.
         """
-        t_x = self.__linear(ix / STEPPER_PULSES_PER_MM_X, self._distance_mm.x,
+        t_x = self.__linear(ix, STEPPER_PULSES_PER_MM_X, self._total_pulses_x,
                             self.max_velocity_mm_per_sec.x)
-        t_y = self.__linear(iy / STEPPER_PULSES_PER_MM_Y, self._distance_mm.y,
+        t_y = self.__linear(iy, STEPPER_PULSES_PER_MM_Y, self._total_pulses_y,
                             self.max_velocity_mm_per_sec.y)
-        t_z = self.__linear(iz / STEPPER_PULSES_PER_MM_Z, self._distance_mm.z,
+        t_z = self.__linear(iz, STEPPER_PULSES_PER_MM_Z, self._total_pulses_z,
                             self.max_velocity_mm_per_sec.z)
-        t_e = self.__linear(ie / STEPPER_PULSES_PER_MM_E, self._distance_mm.e,
+        t_e = self.__linear(ie, STEPPER_PULSES_PER_MM_E, self._total_pulses_e,
                             self.max_velocity_mm_per_sec.e)
         return self._direction, (t_x, t_y, t_z, t_e)
 
