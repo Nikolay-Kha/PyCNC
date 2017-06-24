@@ -132,8 +132,11 @@ class GMachine(object):
             eb = db
             eq = 5  # mark as non-existing to check all
         else:
-            b = (db - rb) / (da - ra)
-            ea = math.copysign(math.sqrt(r * r / (1.0 + abs(b))), da - ra)
+            if da - ra == 0:
+                ea = 0
+            else:
+                b = (db - rb) / (da - ra)
+                ea = math.copysign(math.sqrt(r * r / (1.0 + abs(b))), da - ra)
             eb = math.copysign(math.sqrt(r * r - ea * ea), db - rb)
             eq = self.__quarter(ea, eb)
             ea += ra
