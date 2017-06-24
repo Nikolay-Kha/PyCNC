@@ -30,7 +30,11 @@ from __future__ import division
 import math
 import time
 
-import ads111x as adc
+try:
+    import ads111x as adc
+except ImportError:
+    print("---- ads111x is not detected ----")
+    adc = None
 
 CELSIUS_TO_KELVIN = 273.15
 
@@ -53,6 +57,8 @@ def get_temperature(channel):
     :param channel: ads111x channel.
     :return: temperature in Celsius
     """
+    if adc is None:
+        raise IOError("ads111x is not connected")
     v = adc.measure(channel)
     if v >= Vcc:
         raise IOError("Thermistor not connected")
