@@ -334,7 +334,10 @@ class PulseGeneratorCircular(PulseGenerator):
         # adjust radius to fit into axises step.
         radius = (round(math.sqrt(sa * sa + sb * sb) * min(apm, bpm))
                   / min(apm, bpm))
-        self._radius2 = radius * radius
+        radius_a = (round(math.sqrt(sa * sa + sb * sb) * apm) / apm)
+        radius_b = (round(math.sqrt(sa * sa + sb * sb) * bpm) / bpm)
+        self._radius_a2 = radius_a * radius_a
+        self._radius_b2 = radius_b * radius_b
         self._radius_a_pulses = int(radius * apm)
         self._radius_b_pulses = int(radius * bpm)
         self._start_a_pulses = int(sa * apm)
@@ -391,12 +394,12 @@ class PulseGeneratorCircular(PulseGenerator):
         quarter_start = int(start_angle / (math.pi / 2.0))
         quarter_end = int(end_angle_m / (math.pi / 2.0))
         if quarter_end - quarter_start >= 4:
-            self._iterations_a = 4 * int(radius * apm)
-            self._iterations_b = 4 * int(radius * apm)
+            self._iterations_a = 4 * round(radius * apm)
+            self._iterations_b = 4 * round(radius * bpm)
         else:
             if quarter_start == quarter_end:
-                self._iterations_a = int(abs(sa - ea) * apm)
-                self._iterations_b = int(abs(sb - eb) * bpm)
+                self._iterations_a = round(abs(sa - ea) * apm)
+                self._iterations_b = round(abs(sb - eb) * bpm)
             else:
                 for r in range(quarter_start, quarter_end + 1):
                     i = r
@@ -404,64 +407,80 @@ class PulseGeneratorCircular(PulseGenerator):
                         i -= 4
                     if r == quarter_start:
                         if i == 0 or i == 2:
-                            self._iterations_a += int(radius * apm) \
-                                                  - int(abs(sa) * apm)
+                            self._iterations_a += round(radius * apm) \
+                                                  - round(abs(sa) * apm)
                         else:
-                            self._iterations_a += int(abs(sa) * apm)
+                            self._iterations_a += round(abs(sa) * apm)
                         if i == 1 or i == 3:
-                            self._iterations_b += int(radius * bpm) \
-                                                  - int(abs(sb) * bpm)
+                            self._iterations_b += round(radius * bpm) \
+                                                  - round(abs(sb) * bpm)
                         else:
-                            self._iterations_b += int(abs(sb) * bpm)
+                            self._iterations_b += round(abs(sb) * bpm)
                     elif r == quarter_end:
                         if i == 0 or i == 2:
-                            self._iterations_a += int(abs(ea) * apm)
+                            self._iterations_a += round(abs(ea) * apm)
                         else:
-                            self._iterations_a += int(radius * apm) \
-                                                  - int(abs(ea) * apm)
+                            self._iterations_a += round(radius * apm) \
+                                                  - round(abs(ea) * apm)
                         if i == 1 or i == 3:
-                            self._iterations_b += int(abs(eb) * bpm)
+                            self._iterations_b += round(abs(eb) * bpm)
                         else:
-                            self._iterations_b += int(radius * bpm) \
-                                                  - int(abs(eb) * bpm)
+                            self._iterations_b += round(radius * bpm) \
+                                                  - round(abs(eb) * bpm)
                     else:
-                        self._iterations_a += int(radius * apm)
-                        self._iterations_b += int(radius * bpm)
+                        self._iterations_a += round(radius * apm)
+                        self._iterations_b += round(radius * bpm)
             if direction == CCW:
-                self._iterations_a = 4 * int(radius * apm) - self._iterations_a
-                self._iterations_b = 4 * int(radius * bpm) - self._iterations_b
+                self._iterations_a = 4 * round(radius * apm) - self._iterations_a
+                self._iterations_b = 4 * round(radius * bpm) - self._iterations_b
 
         arc = delta_angle * radius
         e2 = delta.e * delta.e
         if self._plane == PLANE_XY:
             self._iterations_3rd = abs(delta.z) * STEPPER_PULSES_PER_MM_Z
             l = math.sqrt(arc * arc + delta.z * delta.z + e2)
-            self._velocity_3rd = abs(delta.z) / l * velocity
+            if l == 0:
+                self._velocity_3rd = velocity
+            else:
+                self._velocity_3rd = abs(delta.z) / l * velocity
             self._third_dir = math.copysign(1, delta.z)
         elif self._plane == PLANE_YZ:
             self._iterations_3rd = abs(delta.x) * STEPPER_PULSES_PER_MM_X
             l = math.sqrt(arc * arc + delta.x * delta.x + e2)
-            self._velocity_3rd = abs(delta.x) / l * velocity
+            if l == 0:
+                self._velocity_3rd = velocity
+            else:
+                self._velocity_3rd = abs(delta.x) / l * velocity
             self._third_dir = math.copysign(1, delta.x)
         elif self._plane == PLANE_ZX:
             self._iterations_3rd = abs(delta.y) * STEPPER_PULSES_PER_MM_Y
             l = math.sqrt(arc * arc + delta.y * delta.y + e2)
-            self._velocity_3rd = abs(delta.y) / l * velocity
+            if l == 0:
+                self._velocity_3rd = velocity
+            else:
+                self._velocity_3rd = abs(delta.y) / l * velocity
             self._third_dir = math.copysign(1, delta.y)
         else:
             raise ValueError("Unknown plane")
         self._iterations_e = abs(delta.e) * STEPPER_PULSES_PER_MM_E
         # Velocity splits with corresponding distance.
-        circular_velocity = arc / l * velocity
+        if l == 0:
+            circular_velocity = velocity
+            self._e_velocity = velocity
+        else:
+            circular_velocity = arc / l * velocity
+            self._e_velocity = abs(delta.e) / l * velocity
         self._r_div_v = radius / circular_velocity
-        self._e_velocity = abs(delta.e) / l * velocity
         self._e_dir = math.copysign(1, delta.e)
         self.max_velocity_mm_per_sec = max(circular_velocity,
                                            self._velocity_3rd, self._e_velocity)
         self.acceleration_time_s = (self.max_velocity_mm_per_sec
                                     / STEPPER_MAX_ACCELERATION_MM_PER_S2)
-        if STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
-                > l:
+        if l == 0:
+            self.linear_time_s = 0.0
+            self.max_velocity_mm_per_sec = 0
+        elif STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s \
+                ** 2 > l:
             self.acceleration_time_s = \
                 math.sqrt(l / STEPPER_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
@@ -520,10 +539,10 @@ class PulseGeneratorCircular(PulseGenerator):
                                                     self._radius_a_pulses,
                                                     self._side_a, self._dir_a)
         a /= pulses_per_mm
-        # last item can be slightly more then end angle due to float precision
+        # first and last item can be slightly out of bound due float precision
         if i + 1 == self._iterations_a:
             return direction, self._r_div_v * self._delta_angle
-        b = math.sqrt(self._radius2 - a * a)
+        b = math.sqrt(self._radius_a2 - a * a)
         if side:
             b = -b
         return direction, self.__circular_find_time(a, b)
@@ -535,10 +554,10 @@ class PulseGeneratorCircular(PulseGenerator):
                                                     self._radius_b_pulses,
                                                     self._side_b, self._dir_b)
         b /= pulses_per_mm
-        # last item can be slightly more then end angle due to float precision
+        # first and last item can be slightly out of bound due float precision
         if i + 1 == self._iterations_b:
             return direction, self._r_div_v * self._delta_angle
-        a = math.sqrt(self._radius2 - b * b)
+        a = math.sqrt(self._radius_b2 - b * b)
         if side:
             a = -a
         return direction, self.__circular_find_time(a, b)

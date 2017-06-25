@@ -167,18 +167,24 @@ class TestPulses(unittest.TestCase):
         m = Coordinates(2, 4, 0, 0)
         g = PulseGeneratorLinear(m, self.v)
         i = 0
+        j = 0
+        k = 0
         for direction, px, py, pz, pe in g:
             if direction:
                 continue
-            if i % 2 == 0:
-                self.assertNotEqual(px, None)
+            if py is not None:
+                k += 1
+                j += 1
             else:
-                self.assertEqual(px, None)
-            self.assertNotEqual(py, None)
+                self.assertNotEqual(px, None)
+            if px is not None:
+                if i != 0:
+                    self.assertEqual(j, 2)
+                j = 0
             self.assertEqual(pz, None)
             self.assertEqual(pe, None)
             i += 1
-        self.assertEqual(m.find_max() * STEPPER_PULSES_PER_MM_Y, i)
+        self.assertEqual(k / STEPPER_PULSES_PER_MM_Y, m.y)
 
     def test_pulses_count_and_timings(self):
         # Check if number of pulses is equal to specified distance.
