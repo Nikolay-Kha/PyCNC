@@ -179,7 +179,8 @@ class TestPulses(unittest.TestCase):
                 self.assertNotEqual(px, None)
             if px is not None:
                 if i != 0:
-                    self.assertEqual(j, 2)
+                    self.assertEqual(j, 2 * STEPPER_PULSES_PER_MM_Y
+                                     / STEPPER_PULSES_PER_MM_X)
                 j = 0
             self.assertEqual(pz, None)
             self.assertEqual(pe, None)
