@@ -63,13 +63,34 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1F-1"))
         self.assertRaises(GMachineException,
-                          m.do_command, GCode.parse_line("G1F999999"))
+                          m.do_command, GCode.parse_line("G1X100F999999"))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X-1Y0Z0"))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X0Y-1Z0"))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X0Y0Z-1"))
+
+    def test_feed_rate(self):
+        m = GMachine()
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G1X1F-1"))
+        m.do_command(GCode.parse_line("G1X100F"
+                                      + str(MAX_VELOCITY_MM_PER_MIN_X)))
+        m.do_command(GCode.parse_line("G1Y100F"
+                                      + str(MAX_VELOCITY_MM_PER_MIN_Y)))
+        m.do_command(GCode.parse_line("G1Z100F"
+                                      + str(MAX_VELOCITY_MM_PER_MIN_Z)))
+        m.do_command(GCode.parse_line("G1E100F"
+                                      + str(MAX_VELOCITY_MM_PER_MIN_E)))
+        s = "G1X0F" + str(MAX_VELOCITY_MM_PER_MIN_X + 1)
+        self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
+        s = "G1Y0F" + str(MAX_VELOCITY_MM_PER_MIN_Y + 1)
+        self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
+        s = "G1Z0F" + str(MAX_VELOCITY_MM_PER_MIN_Z + 1)
+        self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
+        s = "G1E0F" + str(MAX_VELOCITY_MM_PER_MIN_E + 1)
+        self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
 
     def test_g2_g3(self):
         m = GMachine()

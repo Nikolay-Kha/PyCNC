@@ -42,6 +42,8 @@ def init():
     gpio.clear(BED_HEATER_PIN)
 
     # calibration
+    # TODO remove this from hal and rewrite, check if there is a special g
+    # command for this
     gpio.set(STEPPER_DIR_PIN_X)
     gpio.set(STEPPER_DIR_PIN_Y)
     gpio.set(STEPPER_DIR_PIN_Z)
@@ -73,7 +75,10 @@ def init():
                 break
             dma.run(False)
             # limit velocity at ~10% of top velocity
-            time.sleep((1 / 0.10) / (STEPPER_MAX_VELOCITY_MM_PER_MIN
+            time.sleep((1 / 0.10) / (min(MAX_VELOCITY_MM_PER_MIN_X,
+                                         MAX_VELOCITY_MM_PER_MIN_Y,
+                                         MAX_VELOCITY_MM_PER_MIN_Z,
+                                         MAX_VELOCITY_MM_PER_MIN_E)
                                      / 60 * max(STEPPER_PULSES_PER_MM_X,
                                                 STEPPER_PULSES_PER_MM_Y,
                                                 STEPPER_PULSES_PER_MM_Z)))

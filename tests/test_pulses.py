@@ -8,7 +8,10 @@ from cnc import hal_virtual
 
 class TestPulses(unittest.TestCase):
     def setUp(self):
-        self.v = STEPPER_MAX_VELOCITY_MM_PER_MIN
+        self.v = min(MAX_VELOCITY_MM_PER_MIN_X,
+                     MAX_VELOCITY_MM_PER_MIN_Y,
+                     MAX_VELOCITY_MM_PER_MIN_Z,
+                     MAX_VELOCITY_MM_PER_MIN_E)
 
     def tearDown(self):
         pass
@@ -70,6 +73,14 @@ class TestPulses(unittest.TestCase):
         for direction_i, px, py, pz, pe in g:
             if direction_i:
                 dx, dy, dz, de = px, py, pz, pe
+                if STEPPER_INVERTED_X:
+                    dx = -dx
+                if STEPPER_INVERTED_Y:
+                    dy = -dy
+                if STEPPER_INVERTED_Z:
+                    dz = -dz
+                if STEPPER_INVERTED_E:
+                    de = -de
                 dir_requested = True
                 continue
             if dir_requested:  # ignore last change
@@ -235,7 +246,8 @@ class TestPulses(unittest.TestCase):
         # is correct, since PulseGenerator is responsible for this, check only
         # one child class.
         m = Coordinates(TABLE_SIZE_X_MM, 0, 0, 0)
-        g = PulseGeneratorLinear(m, self.v)
+        velocity = 1000
+        g = PulseGeneratorLinear(m, velocity)
         i = 0
         lx = 0
         lt, at, bt = None, None, None
@@ -249,8 +261,7 @@ class TestPulses(unittest.TestCase):
             bt = px - lx
             lx = px
             i += 1
-        self.assertEqual(round(60.0 / lt / STEPPER_PULSES_PER_MM_X),
-                         round(self.v))
+        self.assertEqual(round(60.0 / lt / STEPPER_PULSES_PER_MM_X), velocity)
         self.assertGreater(at, lt)
         self.assertGreater(bt, lt)
 
@@ -261,6 +272,14 @@ class TestPulses(unittest.TestCase):
         dir_found = False
         for direction, px, py, pz, pe in g:
             if direction:
+                if STEPPER_INVERTED_X:
+                    px = -px
+                if STEPPER_INVERTED_Y:
+                    py = -py
+                if STEPPER_INVERTED_Z:
+                    pz = -pz
+                if STEPPER_INVERTED_E:
+                    pe = -pe
                 # should be once
                 self.assertFalse(dir_found)
                 dir_found = True
@@ -271,6 +290,14 @@ class TestPulses(unittest.TestCase):
         dir_found = False
         for direction, px, py, pz, pe in g:
             if direction:
+                if STEPPER_INVERTED_X:
+                    px = -px
+                if STEPPER_INVERTED_Y:
+                    py = -py
+                if STEPPER_INVERTED_Z:
+                    pz = -pz
+                if STEPPER_INVERTED_E:
+                    pe = -pe
                 # should be once
                 self.assertFalse(dir_found)
                 dir_found = True

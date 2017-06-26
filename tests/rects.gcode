@@ -2,7 +2,8 @@ g21
 g90
 ; move to start position
 g1x50y50f1800
-z20
+z20f120
+f1800
 g91
 ; run
 x100

@@ -74,22 +74,30 @@ def move(generator):
     dx, dy, dz, de = 0, 0, 0, 0
     mx, my, mz, me = 0, 0, 0, 0
     cx, cy, cz, ce = 0, 0, 0, 0
-    direction_x, direction_y, direction_z, dire = 1, 1, 1, 1
+    direction_x, direction_y, direction_z, direction_e = 1, 1, 1, 1
     st = time.time()
     direction_found = False
     for direction, tx, ty, tz, te in generator:
         if direction:
             direction_found = True
-            direction_x, direction_y, direction_z, dire = tx, ty, tz, te
+            direction_x, direction_y, direction_z, direction_e = tx, ty, tz, te
+            if STEPPER_INVERTED_X:
+                direction_x = -direction_x
+            if STEPPER_INVERTED_Y:
+                direction_y = -direction_y
+            if STEPPER_INVERTED_Z:
+                direction_z = -direction_z
+            if STEPPER_INVERTED_E:
+                direction_e = -direction_e
             if isinstance(generator, PulseGeneratorLinear):
-                assert ((tx < 0 and delta.x < 0) or (tx > 0 and delta.x > 0)
-                        or delta.x == 0)
-                assert ((ty < 0 and delta.y < 0) or (ty > 0 and delta.y > 0)
-                        or delta.y == 0)
-                assert ((tz < 0 and delta.z < 0) or (tz > 0 and delta.z > 0)
-                        or delta.z == 0)
-                assert ((te < 0 and delta.e < 0) or (te > 0 and delta.e > 0)
-                        or delta.e == 0)
+                assert ((direction_x < 0 and delta.x < 0)
+                        or (direction_x > 0 and delta.x > 0) or delta.x == 0)
+                assert ((direction_y < 0 and delta.y < 0)
+                        or (direction_y > 0 and delta.y > 0) or delta.y == 0)
+                assert ((direction_z < 0 and delta.z < 0)
+                        or (direction_z > 0 and delta.z > 0) or delta.z == 0)
+                assert ((direction_e < 0 and delta.e < 0)
+                        or (direction_e > 0 and delta.e > 0) or delta.e == 0)
             continue
         if tx is not None:
             if tx > mx:
@@ -131,7 +139,7 @@ def move(generator):
             if te > me:
                 me = te
             te = int(round(te * 1000000))
-            ie += dire
+            ie += direction_e
             ce += 1
             if le is not None:
                 de = te - le

@@ -25,7 +25,6 @@ class GMachine(object):
         # init variables
         self._velocity = 0
         self._spindle_rpm = 0
-        self._pause = 0
         self._local = None
         self._convertCoordinates = 0
         self._absoluteCoordinates = 0
@@ -47,9 +46,11 @@ class GMachine(object):
     def reset(self):
         """ Reinitialize all program configurable thing.
         """
-        self._velocity = 1000
+        self._velocity = min(MAX_VELOCITY_MM_PER_MIN_X,
+                             MAX_VELOCITY_MM_PER_MIN_Y,
+                             MAX_VELOCITY_MM_PER_MIN_Z,
+                             MAX_VELOCITY_MM_PER_MIN_E)
         self._spindle_rpm = 1000
-        self._pause = 0
         self._local = Coordinates(0.0, 0.0, 0.0, 0.0)
         self._convertCoordinates = 1.0
         self._absoluteCoordinates = True
@@ -96,6 +97,14 @@ class GMachine(object):
                                           TABLE_SIZE_Z_MM, 0)):
             raise GMachineException("out of effective area")
 
+    # noinspection PyMethodMayBeStatic
+    def __check_velocity(self, max_velocity):
+        if max_velocity.x > MAX_VELOCITY_MM_PER_MIN_X \
+                or max_velocity.y > MAX_VELOCITY_MM_PER_MIN_Y \
+                or max_velocity.z > MAX_VELOCITY_MM_PER_MIN_Z \
+                or max_velocity.e > MAX_VELOCITY_MM_PER_MIN_E:
+            raise GMachineException("out of maximum speed")
+
     def _move_linear(self, delta, velocity):
         delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
                             1.0 / STEPPER_PULSES_PER_MM_Y,
@@ -103,10 +112,12 @@ class GMachine(object):
                             1.0 / STEPPER_PULSES_PER_MM_E)
         if delta.is_zero():
             return
+        velocity_per_axis = abs(delta) * (velocity / delta.length())
         self.__check_delta(delta)
 
         logging.info("Moving linearly {}".format(delta))
         gen = PulseGeneratorLinear(delta, velocity)
+        self.__check_velocity(gen.max_velocity())
         hal.move(gen)
         # save position
         self._position = self._position + delta
@@ -212,14 +223,19 @@ class GMachine(object):
                                                direction, radius, velocity))
         gen = PulseGeneratorCircular(circle_end, radius, self._plane, direction,
                                      velocity)
-        hal.move(gen)
+        self.__check_velocity(gen.max_velocity())
         # if finish coords is not on circle, move some distance linearly
         linear_delta = delta - circle_end
+        linear_gen = None
         if not linear_delta.is_zero():
             logging.info("Moving additionally {} to finish circle command".
                          format(linear_delta))
-            gen = PulseGeneratorLinear(linear_delta, velocity)
-            hal.move(gen)
+            linear_gen = PulseGeneratorLinear(linear_delta, velocity)
+            self.__check_velocity(linear_gen.max_velocity())
+        # do movements
+        hal.move(gen)
+        if linear_gen is not None:
+            hal.move(linear_gen)
         # save position
         self._position = self._position + circle_end + linear_delta
 
@@ -227,9 +243,10 @@ class GMachine(object):
         """ Move head to park position
         """
         d = Coordinates(0, 0, -self._position.z, 0)
-        self._move_linear(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
+        self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z)
         d = Coordinates(-self._position.x, -self._position.y, 0, 0)
-        self._move_linear(d, STEPPER_MAX_VELOCITY_MM_PER_MIN)
+        self._move_linear(d, min(MAX_VELOCITY_MM_PER_MIN_X,
+                                 MAX_VELOCITY_MM_PER_MIN_Y))
 
     def position(self):
         """ Return current machine position (after the latest command)
@@ -294,17 +311,37 @@ class GMachine(object):
                                       self._convertCoordinates)
             # coord = self._position + delta
         velocity = gcode.get('F', self._velocity)
-        pause = gcode.get('P', self._pause)
         radius = gcode.radius(Coordinates(0.0, 0.0, 0.0, 0.0),
                               self._convertCoordinates)
         # check parameters
-        if velocity <= 0 or velocity > STEPPER_MAX_VELOCITY_MM_PER_MIN:
-            raise GMachineException("bad feed speed")
-        if pause < 0:
-            raise GMachineException("bad delay")
+        if velocity <= 0:
+            raise GMachineException("negative feed speed")
         # select command and run it
         if c == 'G0':  # rapid move
-            self._move_linear(delta, STEPPER_MAX_VELOCITY_MM_PER_MIN)
+            vl = max(MAX_VELOCITY_MM_PER_MIN_X,
+                     MAX_VELOCITY_MM_PER_MIN_Y,
+                     MAX_VELOCITY_MM_PER_MIN_Z,
+                     MAX_VELOCITY_MM_PER_MIN_E)
+            l = delta.length()
+            if l > 0:
+                proportion = abs(delta) / l
+                if proportion.x > 0:
+                    v = MAX_VELOCITY_MM_PER_MIN_X / proportion.x
+                    if v < vl:
+                        vl = v
+                if proportion.y > 0:
+                    v = MAX_VELOCITY_MM_PER_MIN_Y / proportion.y
+                    if v < vl:
+                        vl = v
+                if proportion.z > 0:
+                    v = MAX_VELOCITY_MM_PER_MIN_Z / proportion.z
+                    if v < vl:
+                        vl = v
+                if proportion.e > 0:
+                    v = MAX_VELOCITY_MM_PER_MIN_E / proportion.e
+                    if v < vl:
+                        vl = v
+            self._move_linear(delta, vl)
         elif c == 'G1':  # linear interpolation
             self._move_linear(delta, velocity)
         elif c == 'G2':  # circular interpolation, clockwise
@@ -312,6 +349,11 @@ class GMachine(object):
         elif c == 'G3':  # circular interpolation, counterclockwise
             self._circular(delta, radius, velocity, CCW)
         elif c == 'G4':  # delay in s
+            if not gcode.has('P'):
+                raise GMachineException("P is not specified")
+            pause = gcode.get('P', 0)
+            if pause < 0:
+                raise GMachineException("bad delay")
             hal.join()
             time.sleep(pause)
         elif c == 'G17':  # XY plane select
@@ -394,6 +436,5 @@ class GMachine(object):
             raise GMachineException("unknown command")
         # save parameters on success
         self._velocity = velocity
-        self._pause = pause
         logging.debug("position {}".format(self._position))
         return answer

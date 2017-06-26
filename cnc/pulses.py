@@ -86,7 +86,7 @@ class PulseGenerator(object):
         (self._acceleration_time_s, self._linear_time_s,
          max_axis_velocity_mm_per_sec) = self._get_movement_parameters()
         # helper variable
-        self._2Vmax_per_a = (2.0 * max_axis_velocity_mm_per_sec
+        self._2Vmax_per_a = (2.0 * max_axis_velocity_mm_per_sec.find_max()
                              / STEPPER_MAX_ACCELERATION_MM_PER_S2)
         self._iteration_x = 0
         self._iteration_y = 0
@@ -152,7 +152,16 @@ class PulseGenerator(object):
         # check if direction update:
         if direction != self._iteration_direction:
             self._iteration_direction = direction
-            return (True,) + direction
+            dir_x, dir_y, dir_z, dir_e = direction
+            if STEPPER_INVERTED_X:
+                dir_x = -dir_x
+            if STEPPER_INVERTED_Y:
+                dir_y = -dir_y
+            if STEPPER_INVERTED_Z:
+                dir_z = -dir_z
+            if STEPPER_INVERTED_E:
+                dir_e = -dir_e
+            return True, dir_x, dir_y, dir_z, dir_e
         # check condition to stop
         if tx is None and ty is None and tz is None and te is None:
             raise StopIteration
@@ -204,6 +213,13 @@ class PulseGenerator(object):
         """
         return self._delta
 
+    def max_velocity(self):
+        """ Get max velocity for each axis.
+        :return: Vector with max velocity(in mm per min) for each axis.
+        """
+        _, _, v = self._get_movement_parameters()
+        return v * SECONDS_IN_MINUTE
+
 
 class PulseGeneratorLinear(PulseGenerator):
     def __init__(self, delta_mm, velocity_mm_per_min):
@@ -253,7 +269,7 @@ class PulseGeneratorLinear(PulseGenerator):
         """
         return (self.acceleration_time_s,
                 self.linear_time_s,
-                self.max_velocity_mm_per_sec.find_max())
+                self.max_velocity_mm_per_sec)
 
     @staticmethod
     def __linear(i, pulses_per_mm, total_pulses, velocity_mm_per_sec):
@@ -431,8 +447,10 @@ class PulseGeneratorCircular(PulseGenerator):
                         self._iterations_a += round(radius * apm)
                         self._iterations_b += round(radius * bpm)
             if direction == CCW:
-                self._iterations_a = 4 * round(radius * apm) - self._iterations_a
-                self._iterations_b = 4 * round(radius * bpm) - self._iterations_b
+                self._iterations_a = (4 * round(radius * apm)
+                                      - self._iterations_a)
+                self._iterations_b = (4 * round(radius * bpm)
+                                      - self._iterations_b)
 
         arc = delta_angle * radius
         e2 = delta.e * delta.e
@@ -472,19 +490,33 @@ class PulseGeneratorCircular(PulseGenerator):
             self._e_velocity = abs(delta.e) / l * velocity
         self._r_div_v = radius / circular_velocity
         self._e_dir = math.copysign(1, delta.e)
-        self.max_velocity_mm_per_sec = max(circular_velocity,
-                                           self._velocity_3rd, self._e_velocity)
-        self.acceleration_time_s = (self.max_velocity_mm_per_sec
+        if self._plane == PLANE_XY:
+            self.max_velocity_mm_per_sec = Coordinates(circular_velocity,
+                                                       circular_velocity,
+                                                       self._velocity_3rd,
+                                                       self._e_velocity)
+        elif self._plane == PLANE_YZ:
+            self.max_velocity_mm_per_sec = Coordinates(self._velocity_3rd,
+                                                       circular_velocity,
+                                                       circular_velocity,
+                                                       self._e_velocity)
+        elif self._plane == PLANE_ZX:
+            self.max_velocity_mm_per_sec = Coordinates(circular_velocity,
+                                                       self._velocity_3rd,
+                                                       circular_velocity,
+                                                       self._e_velocity)
+        self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max()
                                     / STEPPER_MAX_ACCELERATION_MM_PER_S2)
         if l == 0:
             self.linear_time_s = 0.0
-            self.max_velocity_mm_per_sec = 0
+            self.max_velocity_mm_per_sec = Coordinates(0, 0, 0, 0)
         elif STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s \
                 ** 2 > l:
             self.acceleration_time_s = \
                 math.sqrt(l / STEPPER_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
-            self.max_velocity_mm_per_sec = l / self.acceleration_time_s
+            v = l / self.acceleration_time_s
+            self.max_velocity_mm_per_sec = Coordinates(v, v, v, v)
         else:
             linear_distance_mm = l - self.acceleration_time_s ** 2 \
                                  * STEPPER_MAX_ACCELERATION_MM_PER_S2
