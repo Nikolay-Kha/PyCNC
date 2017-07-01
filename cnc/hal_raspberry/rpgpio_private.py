@@ -198,7 +198,7 @@ class DMAProto(object):
         """ This class provides basic access to DMA and creates buffer for
             control blocks.
         """
-        self._DMA_CHANNEL = dma_channel
+        self._DMA_CHANNEL_ADDRESS = 0x100 * dma_channel
         # allocate buffer for control blocks
         self._phys_memory = CMAPhysicalMemory(memory_size)
         # prepare dma registers memory map
@@ -207,34 +207,41 @@ class DMAProto(object):
     def _run_dma(self):
         """ Run DMA module from created buffer.
         """
-        address = 0x100 * self._DMA_CHANNEL
-        self._dma.write_int(address + DMA_CS, DMA_CS_END)
-        self._dma.write_int(address + DMA_CONBLK_AD,
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CS, DMA_CS_END)
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CONBLK_AD,
                             self._phys_memory.get_bus_address())
         cs = DMA_CS_PRIORITY(7) | DMA_CS_PANIC_PRIORITY(7) | DMA_CS_DISDEBUG
-        self._dma.write_int(address + DMA_CS, cs)
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CS, cs)
         cs |= DMA_CS_ACTIVE
-        self._dma.write_int(address + DMA_CS, cs)
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CS, cs)
 
     def _stop_dma(self):
         """ Stop DMA
         """
-        address = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(address + DMA_CS)
+        cs = self._dma.read_int(self._DMA_CHANNEL_ADDRESS + DMA_CS)
         cs |= DMA_CS_ABORT
-        self._dma.write_int(address + DMA_CS, cs)
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CS, cs)
         cs &= ~DMA_CS_ACTIVE
-        self._dma.write_int(address + DMA_CS, cs)
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CS, cs)
         cs |= DMA_CS_RESET
-        self._dma.write_int(address + DMA_CS, cs)
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_CS, cs)
 
     def is_active(self):
         """ Check if DMA is working. Method can check if single sequence
             still active or cycle sequence is working.
         :return: boolean value
         """
-        address = 0x100 * self._DMA_CHANNEL
-        cs = self._dma.read_int(address + DMA_CS)
+        cs = self._dma.read_int(self._DMA_CHANNEL_ADDRESS + DMA_CS)
         if cs & DMA_CS_ACTIVE == DMA_CS_ACTIVE:
             return True
         return False
+
+    def current_control_block(self):
+        """ Get current dma control block address.
+        :return: Currently running DMA control block offset in bytes or None
+                 value if DMA is not running.
+        """
+        cb = self._dma.read_int(self._DMA_CHANNEL_ADDRESS + DMA_CONBLK_AD)
+        if cb == 0:
+            return None
+        return cb - self._phys_memory.get_bus_address()

@@ -175,17 +175,32 @@ def move(generator):
     """ Move head to specified position
     :param generator: PulseGenerator object.
     """
-    # wait if previous command still works
-    while dma.is_active():
-        time.sleep(0.001)
+    # Fill buffer right before currently running(previous sequence) dma
+    # this mode implements kind of round buffer, but protects if CPU is not
+    # powerful enough to calculate buffer in advance, faster then machine
+    # moving. In this case machine would safely paused between commands until
+    # calculation is done.
 
+    # 4 control blocks per 32 bytes
+    bytes_per_iter = 4 * dma.control_block_size()
     # prepare and run dma
-    dma.clear()
+    dma.clear()  # should just clear current address, but not stop current DMA
     prev = 0
     is_ran = False
     instant = INSTANT_RUN
     st = time.time()
+    current_cb = 0
+    k = 0
+    k0 = 0
     for direction, tx, ty, tz, te in generator:
+        if current_cb is not None:
+            while dma.current_address() + bytes_per_iter >= current_cb:
+                time.sleep(0.001)
+                current_cb = dma.current_control_block()
+                if current_cb is None:
+                    k0 = k
+                    st = time.time()
+                    break  # previous dma sequence has stopped
         if direction:  # set up directions
             pins_to_set = 0
             pins_to_clear = 0
@@ -229,19 +244,27 @@ def move(generator):
         # matter for pulses with 1-2us length.
         prev = k + STEPPER_PULSE_LENGTH_US
         # instant run handling
-        if not is_ran and instant:
-            if k > 500000:  # wait at least 500 ms is uploaded
-                if time.time() - st > 0.5:
+        if not is_ran and instant and current_cb is None:
+            if k - k0 > 100000:  # wait at least 100 ms is uploaded
+                nt = time.time() - st
+                ng = (k - k0)/ 1000000.0
+                if nt > ng:
                     logging.warn("Buffer preparing for instant run took more "
-                                 "time then buffer time")
+                                 "time then buffer time"
+                                 " {}/{}".format(nt, ng))
                     instant = False
                 else:
                     dma.run_stream()
                     is_ran = True
     pt = time.time()
     if not is_ran:
+        # after long command, we can fill short buffer, that why we may need to
+        #  wait until long command finishes
+        while dma.is_active():
+            time.sleep(0.01)
         dma.run(False)
     else:
+        # stream mode can be activated only if previous command was finished.
         dma.finalize_stream()
 
     logging.info("prepared in " + str(round(pt - st, 2)) + "s, estimated in "

@@ -241,6 +241,18 @@ class DMAGPIO(DMAProto):
         """
         self.__current_address = 0
 
+    def current_address(self):
+        """ Get current buffer offset.
+        :return: current buffer offset in bytes.
+        """
+        return self.__current_address
+
+    def control_block_size(self):
+        """ Get control block size.
+        :return: control block size in bytes.
+        """
+        return self._DMA_CONTROL_BLOCK_SIZE
+
 
 class DMAPWM(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
