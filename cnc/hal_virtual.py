@@ -10,8 +10,7 @@ from cnc.config import *
 
 
 def init():
-    """ Initialize GPIO pins and machine itself, including calibration if
-        needed. Do not return till all procedure is completed.
+    """ Initialize GPIO pins and machine itself.
     """
     logging.info("initialize hal")
 
@@ -61,6 +60,18 @@ def get_bed_temperature():
     :return: temperature in Celsius.
     """
     return BED_MAX_TEMPERATURE * 0.999
+
+
+def calibrate(x, y, z):
+    """ Move head to home position till end stop switch will be triggered.
+    Do not return till all procedures are completed.
+    :param x: boolean, True to calibrate X axis.
+    :param y: boolean, True to calibrate Y axis.
+    :param z: boolean, True to calibrate Z axis.
+    :return: boolean, True if all specified end stops were triggered.
+    """
+    logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
+    return True
 
 
 # noinspection PyUnusedLocal

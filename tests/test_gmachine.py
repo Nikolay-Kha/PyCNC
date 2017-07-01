@@ -32,10 +32,10 @@ class TestGMachine(unittest.TestCase):
         m.release()
         self.assertEqual(m.position(), Coordinates(0, 0, 0, 4))
 
-    def test_home(self):
+    def test_safe_zero(self):
         m = GMachine()
         m.do_command(GCode.parse_line("X1Y2Z3E4"))
-        m.home()
+        m.safe_zero()
         self.assertEqual(m.position(), Coordinates(0, 0, 0, 4))
 
     def test_none(self):

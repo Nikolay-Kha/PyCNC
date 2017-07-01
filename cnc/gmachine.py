@@ -37,7 +37,7 @@ class GMachine(object):
     def release(self):
         """ Return machine to original position and free all resources.
         """
-        self.home()
+        self.safe_zero()
         self._spindle(0)
         for h in self._heaters:
             self._heaters[h].stop()
@@ -112,7 +112,6 @@ class GMachine(object):
                             1.0 / STEPPER_PULSES_PER_MM_E)
         if delta.is_zero():
             return
-        velocity_per_axis = abs(delta) * (velocity / delta.length())
         self.__check_delta(delta)
 
         logging.info("Moving linearly {}".format(delta))
@@ -239,14 +238,25 @@ class GMachine(object):
         # save position
         self._position = self._position + circle_end + linear_delta
 
-    def home(self):
-        """ Move head to park position
+    def safe_zero(self, x=True, y=True, z=True):
+        """ Move head to zero position safely.
+        :param x: boolean, move X axis to zero
+        :param y: boolean, move X axis to zero
+        :param z: boolean, move X axis to zero
         """
-        d = Coordinates(0, 0, -self._position.z, 0)
-        self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z)
-        d = Coordinates(-self._position.x, -self._position.y, 0, 0)
-        self._move_linear(d, min(MAX_VELOCITY_MM_PER_MIN_X,
-                                 MAX_VELOCITY_MM_PER_MIN_Y))
+        if z:
+            d = Coordinates(0, 0, -self._position.z, 0)
+            self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z)
+        if x and not y:
+            self._move_linear(Coordinates(-self._position.x, 0, 0, 0),
+                              MAX_VELOCITY_MM_PER_MIN_X)
+        elif y and not x:
+            self._move_linear(Coordinates(0, -self._position.y, 0, 0),
+                              MAX_VELOCITY_MM_PER_MIN_X)
+        elif x and y:
+            d = Coordinates(-self._position.x, -self._position.y, 0, 0)
+            self._move_linear(d, min(MAX_VELOCITY_MM_PER_MIN_X,
+                              MAX_VELOCITY_MM_PER_MIN_Y))
 
     def position(self):
         """ Return current machine position (after the latest command)
@@ -367,7 +377,13 @@ class GMachine(object):
         elif c == 'G21':  # switch to mm
             self._convertCoordinates = 1.0
         elif c == 'G28':  # home
-            self.home()
+            axises = gcode.has('X'), gcode.has('Y'), gcode.has('Z')
+            if axises == (False, False, False):
+                axises = True, True, True
+            self.safe_zero(*axises)
+            hal.join()
+            if not hal.calibrate(*axises):
+                raise GMachineException("failed to calibrate")
         elif c == 'G53':  # switch to machine coords
             self._local = Coordinates(0.0, 0.0, 0.0, 0.0)
         elif c == 'G90':  # switch to absolute coords
@@ -432,6 +448,15 @@ class GMachine(object):
             answer = "X:{} Y:{} Z:{} E:{}".format(p.x, p.y, p.z, p.e)
         elif c is None:  # command not specified(for example, just F was passed)
             pass
+        # commands below are added just for compatibility
+        elif c == 'M82':  # absolute mode for extruder
+            if not self._absoluteCoordinates:
+                raise GMachineException("Not supported, use G90/G91")
+        elif c == 'M83':  # relative mode for extruder
+            if self._absoluteCoordinates:
+                raise GMachineException("Not supported, use G90/G91")
+        elif c == 'M84':  # disable motors
+            pass  # do not do anything
         else:
             raise GMachineException("unknown command")
         # save parameters on success

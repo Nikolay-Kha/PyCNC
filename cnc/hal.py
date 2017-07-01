@@ -2,8 +2,7 @@
 # Imported module contains functions for hardware access fo some board/SoC.
 # List of HAL methods that should be implemented in each module:
 #    def init():
-#        """ Initialize GPIO pins and machine itself, including calibration if
-#            needed. Do not return till all procedure is completed.
+#        """ Initialize GPIO pins and machine itself.
 #        """
 #        do_something()
 #
@@ -52,6 +51,15 @@
 #        """
 #        return measure()
 #
+#    def calibrate(x, y, z):
+#        """ Move head to home position till end stop switch will be triggered.
+#        Do not return till all procedures are completed.
+#        :param x: boolean, True to calibrate X axis.
+#        :param y: boolean, True to calibrate Y axis.
+#        :param z: boolean, True to calibrate Z axis.
+#        :return: boolean, True if all specified end stops were triggered.
+#        """
+#        return do_something()
 #
 #    def move(generator):
 #        """ Move head to according pulses in PulseGenerator.
@@ -95,6 +103,8 @@ if 'get_extruder_temperature' not in locals():
     raise NotImplementedError("hal.get_extruder_temperature() not implemented")
 if 'get_bed_temperature' not in locals():
     raise NotImplementedError("hal.get_bed_temperature() not implemented")
+if 'calibrate' not in locals():
+    raise NotImplementedError("hal.calibrate() not implemented")
 if 'move' not in locals():
     raise NotImplementedError("hal.move() not implemented")
 if 'join' not in locals():

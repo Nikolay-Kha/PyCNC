@@ -18,8 +18,7 @@ STEP_PIN_MASK_E = 1 << STEPPER_STEP_PIN_E
 
 
 def init():
-    """ Initialize GPIO pins and machine itself, including calibration if
-        needed. Do not return till all procedures are completed.
+    """ Initialize GPIO pins and machine itself.
     """
     gpio.init(STEPPER_STEP_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
@@ -30,8 +29,8 @@ def init():
     gpio.init(STEPPER_DIR_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_DIR_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
-    gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
-    gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
+    gpio.init(ENDSTOP_PIN_Y, rpgpio.GPIO.MODE_INPUT_PULLUP)
+    gpio.init(ENDSTOP_PIN_Z, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(SPINDLE_PWM_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(FAN_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(EXTRUDER_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
@@ -40,60 +39,6 @@ def init():
     gpio.clear(FAN_PIN)
     gpio.clear(EXTRUDER_HEATER_PIN)
     gpio.clear(BED_HEATER_PIN)
-
-    # calibration
-    # TODO remove this from hal and rewrite, check if there is a special g
-    # command for this
-    gpio.set(STEPPER_DIR_PIN_X)
-    gpio.set(STEPPER_DIR_PIN_Y)
-    gpio.set(STEPPER_DIR_PIN_Z)
-    pins = STEP_PIN_MASK_X | STEP_PIN_MASK_Y | STEP_PIN_MASK_Z
-    dma.clear()
-    dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
-    st = time.time()
-    max_pulses_left = int(1.2 * max(STEPPER_PULSES_PER_MM_X,
-                                    STEPPER_PULSES_PER_MM_Y,
-                                    STEPPER_PULSES_PER_MM_Z) *
-                          max(TABLE_SIZE_X_MM,
-                              TABLE_SIZE_Y_MM,
-                              TABLE_SIZE_Z_MM))
-    try:
-        while max_pulses_left > 0:
-            if (STEP_PIN_MASK_X & pins) != 0 and gpio.read(ENDSTOP_PIN_X) == 0:
-                pins &= ~STEP_PIN_MASK_X
-                dma.clear()
-                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
-            if (STEP_PIN_MASK_Y & pins) != 0 and gpio.read(ENDSTOP_PIN_Y) == 0:
-                pins &= ~STEP_PIN_MASK_Y
-                dma.clear()
-                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
-            if (STEP_PIN_MASK_Z & pins) != 0 and gpio.read(ENDSTOP_PIN_Z) == 0:
-                pins &= ~STEP_PIN_MASK_Z
-                dma.clear()
-                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
-            if pins == 0:
-                break
-            dma.run(False)
-            # limit velocity at ~10% of top velocity
-            time.sleep((1 / 0.10) / (min(MAX_VELOCITY_MM_PER_MIN_X,
-                                         MAX_VELOCITY_MM_PER_MIN_Y,
-                                         MAX_VELOCITY_MM_PER_MIN_Z,
-                                         MAX_VELOCITY_MM_PER_MIN_E)
-                                     / 60 * max(STEPPER_PULSES_PER_MM_X,
-                                                STEPPER_PULSES_PER_MM_Y,
-                                                STEPPER_PULSES_PER_MM_Z)))
-            max_pulses_left -= 1
-            if st is not None:
-                if time.time() - st > 2:
-                    logging.critical("Calibration still in progress. Check if "
-                                     "machine is moving.\nPress Ctrl+C to "
-                                     "cancel calibration and proceed as is.")
-                    st = None
-        if pins != 0:
-            logging.critical("Calibration has failed. You may proceed, but be "
-                             "careful.")
-    except KeyboardInterrupt:
-        logging.critical("Calibration has canceled by user. Be careful.")
 
 
 def spindle_control(percent):
@@ -152,6 +97,78 @@ def get_bed_temperature():
     :return: temperature in Celsius.
     """
     return thermistor.get_temperature(BED_TEMPERATURE_SENSOR_CHANNEL)
+
+
+def calibrate(x, y, z):
+    """ Move head to home position till end stop switch will be triggered.
+    Do not return till all procedures are completed.
+    :param x: boolean, True to calibrate X axis.
+    :param y: boolean, True to calibrate Y axis.
+    :param z: boolean, True to calibrate Z axis.
+    :return: boolean, True if all specified end stops were triggered.
+    """
+    logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
+    if STEPPER_INVERTED_X:
+        gpio.clear(STEPPER_DIR_PIN_X)
+    else:
+        gpio.set(STEPPER_DIR_PIN_X)
+    if STEPPER_INVERTED_Y:
+        gpio.clear(STEPPER_DIR_PIN_Y)
+    else:
+        gpio.set(STEPPER_DIR_PIN_Y)
+    if STEPPER_INVERTED_Z:
+        gpio.clear(STEPPER_DIR_PIN_Z)
+    else:
+        gpio.set(STEPPER_DIR_PIN_Z)
+    pins = 0
+    max_size = 0
+    if x:
+        pins |= STEP_PIN_MASK_X
+        max_size = max(max_size, TABLE_SIZE_X_MM * STEPPER_PULSES_PER_MM_X)
+    if y:
+        pins |= STEP_PIN_MASK_Y
+        max_size = max(max_size, TABLE_SIZE_Y_MM * STEPPER_PULSES_PER_MM_Y)
+    if z:
+        pins |= STEP_PIN_MASK_Z
+        max_size = max(max_size, TABLE_SIZE_Z_MM * TABLE_SIZE_Z_MM)
+    pulses_per_mm_avg = (STEPPER_PULSES_PER_MM_X + STEPPER_PULSES_PER_MM_Y
+                         + STEPPER_PULSES_PER_MM_Z) / 3.0
+    pulses_per_sec = CALIBRATION_VELOCITY_MM_PER_MIN / 60.0 * pulses_per_mm_avg
+    end_time = time.time() + 1.2 * max_size / pulses_per_sec
+    last_pins = ~pins
+    try:
+        while time.time() < end_time:
+            # check each axis end stop twice
+            x_endstop = (STEP_PIN_MASK_X & pins) != 0
+            y_endstop = (STEP_PIN_MASK_Y & pins) != 0
+            z_endstop = (STEP_PIN_MASK_Z & pins) != 0
+            # read each sensor three time
+            for _ in range(0, 3):
+                x_endstop = x_endstop and ((gpio.read(ENDSTOP_PIN_X) == 1)
+                                           == ENDSTOP_INVERTED_X)
+                y_endstop = y_endstop and ((gpio.read(ENDSTOP_PIN_Y) == 1)
+                                           == ENDSTOP_INVERTED_Y)
+                z_endstop = z_endstop and ((gpio.read(ENDSTOP_PIN_Z) == 1)
+                                           == ENDSTOP_INVERTED_Z)
+            if x_endstop:
+                pins &= ~STEP_PIN_MASK_X
+            if y_endstop:
+                pins &= ~STEP_PIN_MASK_Y
+            if z_endstop:
+                pins &= ~STEP_PIN_MASK_Z
+            if pins != last_pins:
+                dma.stop()
+                dma.clear()
+                if pins == 0:
+                    return True
+                dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
+                # limit velocity
+                dma.add_delay(int(1000000 / pulses_per_sec))
+                last_pins = pins
+                dma.run(True)
+    except KeyboardInterrupt:
+        dma.stop()
+    return False
 
 
 def move(generator):
