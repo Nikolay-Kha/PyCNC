@@ -75,6 +75,8 @@ class TestGMachine(unittest.TestCase):
         m = GMachine()
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X1F-1"))
+        c = "G1X1F" + str(MIN_VELOCITY_MM_PER_MIN - 0.0000001)
+        self.assertRaises(GMachineException, m.do_command, GCode.parse_line(c))
         m.do_command(GCode.parse_line("G1X100F"
                                       + str(MAX_VELOCITY_MM_PER_MIN_X)))
         m.do_command(GCode.parse_line("G1Y100F"

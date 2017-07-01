@@ -324,8 +324,8 @@ class GMachine(object):
         radius = gcode.radius(Coordinates(0.0, 0.0, 0.0, 0.0),
                               self._convertCoordinates)
         # check parameters
-        if velocity <= 0:
-            raise GMachineException("negative feed speed")
+        if velocity < MIN_VELOCITY_MM_PER_MIN:
+            raise GMachineException("feed speed too low")
         # select command and run it
         if c == 'G0':  # rapid move
             vl = max(MAX_VELOCITY_MM_PER_MIN_X,
