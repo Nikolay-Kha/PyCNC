@@ -99,24 +99,30 @@ def get_bed_temperature():
     return thermistor.get_temperature(BED_TEMPERATURE_SENSOR_CHANNEL)
 
 
-def calibrate(x, y, z):
-    """ Move head to home position till end stop switch will be triggered.
-    Do not return till all procedures are completed.
-    :param x: boolean, True to calibrate X axis.
-    :param y: boolean, True to calibrate Y axis.
-    :param z: boolean, True to calibrate Z axis.
-    :return: boolean, True if all specified end stops were triggered.
-    """
-    logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
-    if STEPPER_INVERTED_X:
+def __calibrate_private(x, y, z, invert):
+    if invert:
+        stepper_inverted_x = not STEPPER_INVERTED_X
+        stepper_inverted_y = not STEPPER_INVERTED_Y
+        stepper_inverted_z = not STEPPER_INVERTED_Z
+        endstop_inverted_x = not ENDSTOP_INVERTED_X
+        endstop_inverted_y = not ENDSTOP_INVERTED_Y
+        endstop_inverted_z = not ENDSTOP_INVERTED_Z
+    else:
+        stepper_inverted_x = STEPPER_INVERTED_X
+        stepper_inverted_y = STEPPER_INVERTED_Y
+        stepper_inverted_z = STEPPER_INVERTED_Z
+        endstop_inverted_x = ENDSTOP_INVERTED_X
+        endstop_inverted_y = ENDSTOP_INVERTED_Y
+        endstop_inverted_z = ENDSTOP_INVERTED_Z
+    if stepper_inverted_x:
         gpio.clear(STEPPER_DIR_PIN_X)
     else:
         gpio.set(STEPPER_DIR_PIN_X)
-    if STEPPER_INVERTED_Y:
+    if stepper_inverted_y:
         gpio.clear(STEPPER_DIR_PIN_Y)
     else:
         gpio.set(STEPPER_DIR_PIN_Y)
-    if STEPPER_INVERTED_Z:
+    if stepper_inverted_z:
         gpio.clear(STEPPER_DIR_PIN_Z)
     else:
         gpio.set(STEPPER_DIR_PIN_Z)
@@ -130,45 +136,64 @@ def calibrate(x, y, z):
         max_size = max(max_size, TABLE_SIZE_Y_MM * STEPPER_PULSES_PER_MM_Y)
     if z:
         pins |= STEP_PIN_MASK_Z
-        max_size = max(max_size, TABLE_SIZE_Z_MM * TABLE_SIZE_Z_MM)
+        max_size = max(max_size, TABLE_SIZE_Z_MM * STEPPER_PULSES_PER_MM_Z)
     pulses_per_mm_avg = (STEPPER_PULSES_PER_MM_X + STEPPER_PULSES_PER_MM_Y
                          + STEPPER_PULSES_PER_MM_Z) / 3.0
     pulses_per_sec = CALIBRATION_VELOCITY_MM_PER_MIN / 60.0 * pulses_per_mm_avg
     end_time = time.time() + 1.2 * max_size / pulses_per_sec
+    delay = int(1000000 / pulses_per_sec)
     last_pins = ~pins
-    try:
-        while time.time() < end_time:
-            # check each axis end stop twice
-            x_endstop = (STEP_PIN_MASK_X & pins) != 0
-            y_endstop = (STEP_PIN_MASK_Y & pins) != 0
-            z_endstop = (STEP_PIN_MASK_Z & pins) != 0
-            # read each sensor three time
-            for _ in range(0, 3):
-                x_endstop = x_endstop and ((gpio.read(ENDSTOP_PIN_X) == 1)
-                                           == ENDSTOP_INVERTED_X)
-                y_endstop = y_endstop and ((gpio.read(ENDSTOP_PIN_Y) == 1)
-                                           == ENDSTOP_INVERTED_Y)
-                z_endstop = z_endstop and ((gpio.read(ENDSTOP_PIN_Z) == 1)
-                                           == ENDSTOP_INVERTED_Z)
-            if x_endstop:
-                pins &= ~STEP_PIN_MASK_X
-            if y_endstop:
-                pins &= ~STEP_PIN_MASK_Y
-            if z_endstop:
-                pins &= ~STEP_PIN_MASK_Z
-            if pins != last_pins:
-                dma.stop()
-                dma.clear()
-                if pins == 0:
-                    return True
+    while time.time() < end_time:
+        # check each axis end stop twice
+        x_endstop = (STEP_PIN_MASK_X & pins) != 0
+        y_endstop = (STEP_PIN_MASK_Y & pins) != 0
+        z_endstop = (STEP_PIN_MASK_Z & pins) != 0
+        # read each sensor three time
+        for _ in range(0, 3):
+            x_endstop = x_endstop and ((gpio.read(ENDSTOP_PIN_X) == 1)
+                                       == endstop_inverted_x)
+            y_endstop = y_endstop and ((gpio.read(ENDSTOP_PIN_Y) == 1)
+                                       == endstop_inverted_y)
+            z_endstop = z_endstop and ((gpio.read(ENDSTOP_PIN_Z) == 1)
+                                       == endstop_inverted_z)
+        if x_endstop:
+            pins &= ~STEP_PIN_MASK_X
+        if y_endstop:
+            pins &= ~STEP_PIN_MASK_Y
+        if z_endstop:
+            pins &= ~STEP_PIN_MASK_Z
+        if pins != last_pins:
+            dma.stop()
+            if pins == 0:
+                return True
+            last_pins = pins
+            # Prepare chunk with 1 second buffer. It is needed to make sure
+            # that if program unexpectedly stops, dma will continue work not
+            # long then this buffer time.
+            dma.clear()
+            generate = 1000000
+            while generate > 0:
                 dma.add_pulse(pins, STEPPER_PULSE_LENGTH_US)
-                # limit velocity
-                dma.add_delay(int(1000000 / pulses_per_sec))
-                last_pins = pins
-                dma.run(True)
-    except KeyboardInterrupt:
-        dma.stop()
+                dma.add_delay(delay)
+                generate -= delay + STEPPER_PULSE_LENGTH_US
+            dma.finalize_stream()
+        if not dma.is_active():
+            dma.run(False)
     return False
+
+
+def calibrate(x, y, z):
+    """ Move head to home position till end stop switch will be triggered.
+    Do not return till all procedures are completed.
+    :param x: boolean, True to calibrate X axis.
+    :param y: boolean, True to calibrate Y axis.
+    :param z: boolean, True to calibrate Z axis.
+    :return: boolean, True if all specified end stops were triggered.
+    """
+    logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
+    if not __calibrate_private(x, y, z, True):  # move from endstop switch
+        return False
+    return __calibrate_private(x, y, z, False)  # move to endstop switch
 
 
 def move(generator):
@@ -247,7 +272,7 @@ def move(generator):
         if not is_ran and instant and current_cb is None:
             if k - k0 > 100000:  # wait at least 100 ms is uploaded
                 nt = time.time() - st
-                ng = (k - k0)/ 1000000.0
+                ng = (k - k0) / 1000000.0
                 if nt > ng:
                     logging.warn("Buffer preparing for instant run took more "
                                  "time then buffer time"

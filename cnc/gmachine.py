@@ -244,9 +244,6 @@ class GMachine(object):
         :param y: boolean, move X axis to zero
         :param z: boolean, move X axis to zero
         """
-        if z:
-            d = Coordinates(0, 0, -self._position.z, 0)
-            self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z)
         if x and not y:
             self._move_linear(Coordinates(-self._position.x, 0, 0, 0),
                               MAX_VELOCITY_MM_PER_MIN_X)
@@ -256,7 +253,10 @@ class GMachine(object):
         elif x and y:
             d = Coordinates(-self._position.x, -self._position.y, 0, 0)
             self._move_linear(d, min(MAX_VELOCITY_MM_PER_MIN_X,
-                              MAX_VELOCITY_MM_PER_MIN_Y))
+                                     MAX_VELOCITY_MM_PER_MIN_Y))
+        if z:
+            d = Coordinates(0, 0, -self._position.z, 0)
+            self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z)
 
     def position(self):
         """ Return current machine position (after the latest command)
