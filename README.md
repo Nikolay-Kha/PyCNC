@@ -88,7 +88,7 @@ sudo ln -s /opt/pypy/bin/pypy /usr/local/bin/pypy
 ```
 
 # Project architecture
-![](https://user-images.githubusercontent.com/8740775/27006267-72506220-4e38-11e7-984f-a629971b6e52.png)
+![](https://user-images.githubusercontent.com/8740775/27770129-c8c3592c-5f41-11e7-8a9c-254d5a88ed77.png)
 
 # Dependencies
 Nothing for runtime. Just pure Python code.
