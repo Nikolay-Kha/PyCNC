@@ -165,10 +165,14 @@ def move(generator):
         assert f.count(f[0]) == len(f), "fast forwarded pulse detected"
     pt = time.time()
     assert direction_found, "direction not found"
-    assert ix / STEPPER_PULSES_PER_MM_X == delta.x, "x wrong number of pulses"
-    assert iy / STEPPER_PULSES_PER_MM_Y == delta.y, "y wrong number of pulses"
-    assert iz / STEPPER_PULSES_PER_MM_Z == delta.z, "z wrong number of pulses"
-    assert ie / STEPPER_PULSES_PER_MM_E == delta.e, "e wrong number of pulses"
+    assert round(ix / STEPPER_PULSES_PER_MM_X, 10) == delta.x,\
+        "x wrong number of pulses"
+    assert round(iy / STEPPER_PULSES_PER_MM_Y, 10) == delta.y,\
+        "y wrong number of pulses"
+    assert round(iz / STEPPER_PULSES_PER_MM_Z, 10) == delta.z, \
+        "z wrong number of pulses"
+    assert round(ie / STEPPER_PULSES_PER_MM_E, 10) == delta.e, \
+        "e wrong number of pulses"
     assert max(mx, my, mz, me) <= generator.total_time_s(), \
         "interpolation time or pulses wrong"
     logging.debug("Moved {}, {}, {}, {} iterations".format(ix, iy, iz, ie))

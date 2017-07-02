@@ -56,6 +56,8 @@ class TestGMachine(unittest.TestCase):
     # Test gcode commands.
     def test_g0_g1(self):
         m = GMachine()
+        m.do_command(GCode.parse_line("G0X10Y10Z11"))
+        self.assertEqual(m.position(), Coordinates(10, 10, 11, 0))
         m.do_command(GCode.parse_line("G0X3Y2Z1E-2"))
         self.assertEqual(m.position(), Coordinates(3, 2, 1, -2))
         m.do_command(GCode.parse_line("G1X1Y2Z3E4"))
@@ -185,7 +187,7 @@ class TestGMachine(unittest.TestCase):
         m.do_command(GCode.parse_line("X1Y1Z1E1"))
         self.assertEqual(m.position(), Coordinates(1, 1, 1, 1))
 
-    def test_g90_g92(self):
+    def test_g53_g92(self):
         m = GMachine()
         m.do_command(GCode.parse_line("G92X100Y100Z100E100"))
         m.do_command(GCode.parse_line("X101Y102Z103E104"))
@@ -196,9 +198,17 @@ class TestGMachine(unittest.TestCase):
         m.do_command(GCode.parse_line("G92X3Y4Z5E6"))
         m.do_command(GCode.parse_line("X0Y0Z0E0"))
         self.assertEqual(m.position(), Coordinates(0, 0, 0, 0))
-        m.do_command(GCode.parse_line("G90"))
+        m.do_command(GCode.parse_line("X1Y2Z3E4"))
+        self.assertEqual(m.position(), Coordinates(1, 2, 3, 4))
+        m.do_command(GCode.parse_line("G53"))
         m.do_command(GCode.parse_line("X6Y7Z8E9"))
         self.assertEqual(m.position(), Coordinates(6, 7, 8, 9))
+        m.do_command(GCode.parse_line("G92E0"))
+        m.do_command(GCode.parse_line("X6Y7Z8E1"))
+        self.assertEqual(m.position(), Coordinates(6, 7, 8, 10))
+        m.do_command(GCode.parse_line("G92"))
+        m.do_command(GCode.parse_line("X1Y1Z1E1"))
+        self.assertEqual(m.position(), Coordinates(7, 8, 9, 11))
 
     def test_g53_g91_g92(self):
         m = GMachine()

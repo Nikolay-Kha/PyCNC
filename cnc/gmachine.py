@@ -313,7 +313,8 @@ class GMachine(object):
             c = 'G1'
         # read parameters
         if self._absoluteCoordinates:
-            coord = gcode.coordinates(self._position, self._convertCoordinates)
+            coord = gcode.coordinates(self._position - self._local,
+                                      self._convertCoordinates)
             coord = coord + self._local
             delta = coord - self._position
         else:
@@ -336,19 +337,19 @@ class GMachine(object):
             if l > 0:
                 proportion = abs(delta) / l
                 if proportion.x > 0:
-                    v = MAX_VELOCITY_MM_PER_MIN_X / proportion.x
+                    v = int(MAX_VELOCITY_MM_PER_MIN_X / proportion.x)
                     if v < vl:
                         vl = v
                 if proportion.y > 0:
-                    v = MAX_VELOCITY_MM_PER_MIN_Y / proportion.y
+                    v = int(MAX_VELOCITY_MM_PER_MIN_Y / proportion.y)
                     if v < vl:
                         vl = v
                 if proportion.z > 0:
-                    v = MAX_VELOCITY_MM_PER_MIN_Z / proportion.z
+                    v = int(MAX_VELOCITY_MM_PER_MIN_Z / proportion.z)
                     if v < vl:
                         vl = v
                 if proportion.e > 0:
-                    v = MAX_VELOCITY_MM_PER_MIN_E / proportion.e
+                    v = int(MAX_VELOCITY_MM_PER_MIN_E / proportion.e)
                     if v < vl:
                         vl = v
             self._move_linear(delta, vl)
@@ -391,9 +392,15 @@ class GMachine(object):
         elif c == 'G91':  # switch to relative coords
             self._absoluteCoordinates = False
         elif c == 'G92':  # switch to local coords
-            self._local = self._position - \
-                          gcode.coordinates(Coordinates(0.0, 0.0, 0.0, 0.0),
-                                            self._convertCoordinates)
+            if gcode.has_coordinates():
+                self._local = self._position - gcode.coordinates(
+                    Coordinates(self._position.x - self._local.x,
+                                self._position.y - self._local.y,
+                                self._position.z - self._local.z,
+                                self._position.e - self._local.e),
+                    self._convertCoordinates)
+            else:
+                self._local = self._position
         elif c == 'M3':  # spindle on
             spindle_rpm = gcode.get('S', self._spindle_rpm)
             if spindle_rpm < 0 or spindle_rpm > SPINDLE_MAX_RPM:
