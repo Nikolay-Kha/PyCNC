@@ -5,6 +5,7 @@ from cnc.gmachine import *
 from cnc.coordinates import *
 from cnc.heater import *
 from cnc.pid import *
+from cnc.config import *
 
 
 class TestGMachine(unittest.TestCase):
@@ -65,8 +66,6 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1F-1"))
         self.assertRaises(GMachineException,
-                          m.do_command, GCode.parse_line("G1X100F999999"))
-        self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X-1Y0Z0"))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X0Y-1Z0"))
@@ -74,6 +73,7 @@ class TestGMachine(unittest.TestCase):
                           m.do_command, GCode.parse_line("G1X0Y0Z-1"))
 
     def test_feed_rate(self):
+        PulseGenerator.AUTO_VELOCITY_ADJUSTMENT = False
         m = GMachine()
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X1F-1"))
@@ -87,6 +87,8 @@ class TestGMachine(unittest.TestCase):
                                       + str(MAX_VELOCITY_MM_PER_MIN_Z)))
         m.do_command(GCode.parse_line("G1E100F"
                                       + str(MAX_VELOCITY_MM_PER_MIN_E)))
+        self.assertRaises(GMachineException,
+                          m.do_command, GCode.parse_line("G1X0F999999"))
         s = "G1X0F" + str(MAX_VELOCITY_MM_PER_MIN_X + 1)
         self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
         s = "G1Y0F" + str(MAX_VELOCITY_MM_PER_MIN_Y + 1)
@@ -95,6 +97,11 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
         s = "G1E0F" + str(MAX_VELOCITY_MM_PER_MIN_E + 1)
         self.assertRaises(GMachineException, m.do_command, GCode.parse_line(s))
+        PulseGenerator.AUTO_VELOCITY_ADJUSTMENT = True
+        m.do_command(GCode.parse_line("G1X10Y10Z10F9999999999999999999"))
+        m.do_command(GCode.parse_line("G2I0.1F9999999999999999999"))
+        m.do_command(GCode.parse_line("G2I10F9999999999999999999"))
+        PulseGenerator.AUTO_VELOCITY_ADJUSTMENT = AUTO_VELOCITY_ADJUSTMENT
 
     def test_g2_g3(self):
         m = GMachine()

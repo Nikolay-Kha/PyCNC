@@ -30,6 +30,7 @@ class PulseGenerator(object):
         In the same way circular or other interpolation can be implemented
         based this class.
     """
+    AUTO_VELOCITY_ADJUSTMENT = AUTO_VELOCITY_ADJUSTMENT
 
     def __init__(self, delta):
         """ Create object. Do not create directly this object, inherit this
@@ -46,6 +47,31 @@ class PulseGenerator(object):
         self._linear_time_s = 0.0
         self._2Vmax_per_a = 0.0
         self._delta = delta
+
+    def _adjust_velocity(self, velocity_mm_sec):
+        """ Automatically decrease velocity to all axises proportionally if
+        velocity for one or more axises is more then maximum velocity for axis.
+        :param velocity_mm_sec: input velocity.
+        :return: adjusted(decreased if needed) velocity.
+        """
+        if not self.AUTO_VELOCITY_ADJUSTMENT:
+            return velocity_mm_sec
+        k = 1.0
+        if velocity_mm_sec.x * SECONDS_IN_MINUTE > MAX_VELOCITY_MM_PER_MIN_X:
+            k = min(k, MAX_VELOCITY_MM_PER_MIN_X
+                    / velocity_mm_sec.x / SECONDS_IN_MINUTE)
+        if velocity_mm_sec.y * SECONDS_IN_MINUTE > MAX_VELOCITY_MM_PER_MIN_Y:
+            k = min(k, MAX_VELOCITY_MM_PER_MIN_Y
+                    / velocity_mm_sec.y / SECONDS_IN_MINUTE)
+        if velocity_mm_sec.z * SECONDS_IN_MINUTE > MAX_VELOCITY_MM_PER_MIN_Z:
+            k = min(k, MAX_VELOCITY_MM_PER_MIN_Z
+                    / velocity_mm_sec.z / SECONDS_IN_MINUTE)
+        if velocity_mm_sec.e * SECONDS_IN_MINUTE > MAX_VELOCITY_MM_PER_MIN_E:
+            k = min(k, MAX_VELOCITY_MM_PER_MIN_E
+                    / velocity_mm_sec.e / SECONDS_IN_MINUTE)
+        if k != 1.0:
+            logging.warning("Out of speed, multiply velocity by {}".format(k))
+        return velocity_mm_sec * k
 
     def _get_movement_parameters(self):
         """ Get parameters for interpolation. This method have to be
@@ -231,8 +257,8 @@ class PulseGeneratorLinear(PulseGenerator):
         distance_mm = abs(delta_mm)  # type: Coordinates
         # velocity of each axis
         distance_total_mm = distance_mm.length()
-        self.max_velocity_mm_per_sec = distance_mm * (
-            velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm)
+        self.max_velocity_mm_per_sec = self._adjust_velocity(distance_mm * (
+            velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm))
         # acceleration time
         self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max()
                                     / STEPPER_MAX_ACCELERATION_MM_PER_S2)
@@ -456,71 +482,87 @@ class PulseGeneratorCircular(PulseGenerator):
         e2 = delta.e * delta.e
         if self._plane == PLANE_XY:
             self._iterations_3rd = abs(delta.z) * STEPPER_PULSES_PER_MM_Z
-            l = math.sqrt(arc * arc + delta.z * delta.z + e2)
-            if l == 0:
+            full_length = math.sqrt(arc * arc + delta.z * delta.z + e2)
+            if full_length == 0:
                 self._velocity_3rd = velocity
             else:
-                self._velocity_3rd = abs(delta.z) / l * velocity
+                self._velocity_3rd = abs(delta.z) / full_length * velocity
             self._third_dir = math.copysign(1, delta.z)
         elif self._plane == PLANE_YZ:
             self._iterations_3rd = abs(delta.x) * STEPPER_PULSES_PER_MM_X
-            l = math.sqrt(arc * arc + delta.x * delta.x + e2)
-            if l == 0:
+            full_length = math.sqrt(arc * arc + delta.x * delta.x + e2)
+            if full_length == 0:
                 self._velocity_3rd = velocity
             else:
-                self._velocity_3rd = abs(delta.x) / l * velocity
+                self._velocity_3rd = abs(delta.x) / full_length * velocity
             self._third_dir = math.copysign(1, delta.x)
         elif self._plane == PLANE_ZX:
             self._iterations_3rd = abs(delta.y) * STEPPER_PULSES_PER_MM_Y
-            l = math.sqrt(arc * arc + delta.y * delta.y + e2)
-            if l == 0:
+            full_length = math.sqrt(arc * arc + delta.y * delta.y + e2)
+            if full_length == 0:
                 self._velocity_3rd = velocity
             else:
-                self._velocity_3rd = abs(delta.y) / l * velocity
+                self._velocity_3rd = abs(delta.y) / full_length * velocity
             self._third_dir = math.copysign(1, delta.y)
         else:
             raise ValueError("Unknown plane")
         self._iterations_e = abs(delta.e) * STEPPER_PULSES_PER_MM_E
         # Velocity splits with corresponding distance.
-        if l == 0:
+        if full_length == 0:
             circular_velocity = velocity
             self._e_velocity = velocity
         else:
-            circular_velocity = arc / l * velocity
-            self._e_velocity = abs(delta.e) / l * velocity
+            circular_velocity = arc / full_length * velocity
+            self._e_velocity = abs(delta.e) / full_length * velocity
+        if self._plane == PLANE_XY:
+            self.max_velocity_mm_per_sec = self._adjust_velocity(
+                Coordinates(circular_velocity, circular_velocity,
+                            self._velocity_3rd, self._e_velocity))
+            circular_velocity = min(self.max_velocity_mm_per_sec.x,
+                                    self.max_velocity_mm_per_sec.y)
+            self._velocity_3rd = self.max_velocity_mm_per_sec.z
+        elif self._plane == PLANE_YZ:
+            self.max_velocity_mm_per_sec = self._adjust_velocity(
+                Coordinates(self._velocity_3rd, circular_velocity,
+                            circular_velocity, self._e_velocity))
+            circular_velocity = min(self.max_velocity_mm_per_sec.y,
+                                    self.max_velocity_mm_per_sec.z)
+            self._velocity_3rd = self.max_velocity_mm_per_sec.x
+        elif self._plane == PLANE_ZX:
+            self.max_velocity_mm_per_sec = self._adjust_velocity(
+                Coordinates(circular_velocity, self._velocity_3rd,
+                            circular_velocity, self._e_velocity))
+            circular_velocity = min(self.max_velocity_mm_per_sec.z,
+                                    self.max_velocity_mm_per_sec.x)
+            self._velocity_3rd = self.max_velocity_mm_per_sec.y
+        self._e_velocity = self.max_velocity_mm_per_sec.e
         self._r_div_v = radius / circular_velocity
         self._e_dir = math.copysign(1, delta.e)
-        if self._plane == PLANE_XY:
-            self.max_velocity_mm_per_sec = Coordinates(circular_velocity,
-                                                       circular_velocity,
-                                                       self._velocity_3rd,
-                                                       self._e_velocity)
-        elif self._plane == PLANE_YZ:
-            self.max_velocity_mm_per_sec = Coordinates(self._velocity_3rd,
-                                                       circular_velocity,
-                                                       circular_velocity,
-                                                       self._e_velocity)
-        elif self._plane == PLANE_ZX:
-            self.max_velocity_mm_per_sec = Coordinates(circular_velocity,
-                                                       self._velocity_3rd,
-                                                       circular_velocity,
-                                                       self._e_velocity)
         self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max()
                                     / STEPPER_MAX_ACCELERATION_MM_PER_S2)
-        if l == 0:
+        if full_length == 0:
             self.linear_time_s = 0.0
             self.max_velocity_mm_per_sec = Coordinates(0, 0, 0, 0)
         elif STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s \
-                ** 2 > l:
+                ** 2 > full_length:
             self.acceleration_time_s = \
-                math.sqrt(l / STEPPER_MAX_ACCELERATION_MM_PER_S2)
+                math.sqrt(full_length / STEPPER_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
-            v = l / self.acceleration_time_s
-            self.max_velocity_mm_per_sec = Coordinates(v, v, v, v)
+            v = full_length / self.acceleration_time_s
+            if self.max_velocity_mm_per_sec.x > 0.0:
+                self.max_velocity_mm_per_sec.x = v
+            if self.max_velocity_mm_per_sec.y > 0.0:
+                self.max_velocity_mm_per_sec.y = v
+            if self.max_velocity_mm_per_sec.z > 0.0:
+                self.max_velocity_mm_per_sec.z = v
+            if self.max_velocity_mm_per_sec.e > 0.0:
+                self.max_velocity_mm_per_sec.e = v
         else:
-            linear_distance_mm = l - self.acceleration_time_s ** 2 \
+            linear_distance_mm = full_length - self.acceleration_time_s ** 2 \
                                  * STEPPER_MAX_ACCELERATION_MM_PER_S2
-            self.linear_time_s = linear_distance_mm / velocity
+            self.linear_time_s = linear_distance_mm / math.sqrt(
+                circular_velocity ** 2 + self._velocity_3rd ** 2
+                + self._e_velocity ** 2)
 
     @staticmethod
     def __angle(a, b):
