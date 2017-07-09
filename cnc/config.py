@@ -1,4 +1,4 @@
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Hardware config.
 
 # Maximum velocity for each axis in millimeter per minute.
@@ -23,9 +23,9 @@ STEPPER_INVERTED_Y = False
 STEPPER_INVERTED_Z = False
 STEPPER_INVERTED_E = True
 
-# Invert zero end stops switches. By default(False) low level on input pin means
-# that axis in zero position. For inverted(True) end stops, high level means
-# zero position.
+# Invert zero end stops switches. By default(False) low level on input pin
+# means that axis in zero position. For inverted(True) end stops, high level
+# means zero position.
 ENDSTOP_INVERTED_X = True
 ENDSTOP_INVERTED_Y = True
 ENDSTOP_INVERTED_Z = True
@@ -49,7 +49,7 @@ BED_PID = {"P": 5.06820175723,
            "I": 0.0476413193519,
            "D": 4.76413193519}
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Pins configuration.
 
 STEPPER_STEP_PIN_X = 16
@@ -73,7 +73,7 @@ ENDSTOP_PIN_X = 12
 ENDSTOP_PIN_Y = 6
 ENDSTOP_PIN_Z = 5
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #  Behavior config
 
 # Run command immediately after receiving and stream new pulses, otherwise
@@ -82,7 +82,8 @@ ENDSTOP_PIN_Z = 5
 # enough for streaming pulses(faster then real time).
 INSTANT_RUN = True
 
-# If this parameter is False, error will be raised on command with velocity more
-# than maximum velocity specified here. If this parameter is True, velocity
-# Would be decreased(proportional for all axises) to fit the maximum velocity.
+# If this parameter is False, error will be raised on command with velocity
+# more than maximum velocity specified here. If this parameter is True,
+# velocity would be decreased(proportional for all axises) to fit the maximum
+# velocity.
 AUTO_VELOCITY_ADJUSTMENT = True

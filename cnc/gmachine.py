@@ -241,8 +241,8 @@ class GMachine(object):
     def safe_zero(self, x=True, y=True, z=True):
         """ Move head to zero position safely.
         :param x: boolean, move X axis to zero
-        :param y: boolean, move X axis to zero
-        :param z: boolean, move X axis to zero
+        :param y: boolean, move Y axis to zero
+        :param z: boolean, move Z axis to zero
         """
         if x and not y:
             self._move_linear(Coordinates(-self._position.x, 0, 0, 0),

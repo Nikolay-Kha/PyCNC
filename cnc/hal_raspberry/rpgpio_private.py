@@ -12,21 +12,25 @@ import ctypes
 RPI1_PERI_BASE = 0x20000000
 RPI2_3_PERI_BASE = 0x3F000000
 # detect board version
-with open("/proc/cpuinfo", "r") as f:
-    d = f.read()
-    r = re.search("^Revision\s+:\s+(.+)$", d, flags=re.MULTILINE)
-    h = re.search("^Hardware\s+:\s+(.+)$", d, flags=re.MULTILINE)
-    RPI_1_REVISIONS = ['0002', '0003', '0004', '0005', '0006', '0007', '0008',
-                       '0009', '000d', '000e', '000f', '0010', '0011', '0012',
-                       '0013', '0014', '0015', '900021', '900032']
-    if h is None:
-        raise ImportError("This is not raspberry pi board.")
-    elif r.group(1) in RPI_1_REVISIONS:
-        PERI_BASE = RPI1_PERI_BASE
-    elif "BCM2" in h.group(1):
-        PERI_BASE = RPI2_3_PERI_BASE
-    else:
-        raise ImportError("Unknown board.")
+try:
+    with open("/proc/cpuinfo", "r") as f:
+        d = f.read()
+        r = re.search("^Revision\s+:\s+(.+)$", d, flags=re.MULTILINE)
+        h = re.search("^Hardware\s+:\s+(.+)$", d, flags=re.MULTILINE)
+        RPI_1_REVISIONS = ['0002', '0003', '0004', '0005', '0006', '0007',
+                           '0008', '0009', '000d', '000e', '000f', '0010',
+                           '0011', '0012', '0013', '0014', '0015', '900021',
+                           '900032']
+        if h is None:
+            raise ImportError("This is not raspberry pi board.")
+        elif r.group(1) in RPI_1_REVISIONS:
+            PERI_BASE = RPI1_PERI_BASE
+        elif "BCM2" in h.group(1):
+            PERI_BASE = RPI2_3_PERI_BASE
+        else:
+            raise ImportError("Unknown board.")
+except IOError:
+    raise ImportError("/proc/cpuinfo not found. Not Linux device?")
 PAGE_SIZE = 4096
 GPIO_REGISTER_BASE = 0x200000
 GPIO_INPUT_OFFSET = 0x34
