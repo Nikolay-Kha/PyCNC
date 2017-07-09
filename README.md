@@ -66,15 +66,15 @@ gpio10 - y min
 gpio24 - x max
 gpio23 - x min
 gpio22 - heat bed
-gpio27 - heater 2(or fan)
+gpio27 - heater 2(uses as fan)
 gpio18 - heater 1
-gpio17 - not connected
-gpio15 - not connected
-gpio4  - not connected
-gpio14 - not connected
+gpio17 - ser1(not connected)
+gpio15 - ser2(not connected)
+gpio4  - ser3(not connected)
+gpio14 - ser4(not connected)
 gpio3  - i2c scl for ads1115
 gpio2  - i2c sda for ads1115
-ads1115 ch0 - heater 2(or not connected)
+ads1115 ch0 - heater 2(not connected)
 ads1115 ch1 - bed
 ads1115 ch2 - heater 1
 ads1115 ch3 - not connected
