@@ -89,3 +89,6 @@ INSTANT_RUN = True
 # velocity would be decreased(proportional for all axises) to fit the maximum
 # velocity.
 AUTO_VELOCITY_ADJUSTMENT = True
+
+# Automatically turn on fan when extruder is heating, boolean value.
+AUTO_FAN_ON = True

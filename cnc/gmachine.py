@@ -18,6 +18,8 @@ class GMachine(object):
     """ Main object which control and keep state of whole machine: steppers,
         spindle, extruder etc
     """
+    AUTO_FAN_ON = AUTO_FAN_ON
+
     def __init__(self):
         """ Initialization.
         """
@@ -85,6 +87,8 @@ class GMachine(object):
             self._heaters[heater].stop()
             del self._heaters[heater]
         if temperature != 0:
+            if heater == HEATER_EXTRUDER and self.AUTO_FAN_ON:
+                self._fan(True)
             self._heaters[heater] = Heater(temperature, coefficients, measure,
                                            control)
             if wait:

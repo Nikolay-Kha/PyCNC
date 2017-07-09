@@ -268,6 +268,15 @@ class TestGMachine(unittest.TestCase):
         self.assertTrue(m.fan_state())
         m.do_command(GCode.parse_line("M107"))
         self.assertFalse(m.fan_state())
+        # check auto fan feature
+        m.AUTO_FAN_ON = True
+        m.do_command(GCode.parse_line("M104S" + str(MIN_TEMPERATURE)))
+        self.assertTrue(m.fan_state())
+        m.do_command(GCode.parse_line("M104S0"))
+        self.assertTrue(m.fan_state())
+        m.do_command(GCode.parse_line("M107"))
+        self.assertFalse(m.fan_state())
+        m.AUTO_FAN_ON = False
 
     def test_m140_m190(self):
         m = GMachine()
