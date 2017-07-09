@@ -61,8 +61,8 @@ class Heater(threading.Thread):
                     last_error = time.time()
                 else:
                     if time.time() - last_error > self.SENSOR_TIMEOUT_S:
-                        logging.critical("No data from temperature sensor. Stop"
-                                         " heating.")
+                        logging.critical("No data from temperature sensor."
+                                         " Stop heating.")
                         break
                 continue
             last_error = None
@@ -87,8 +87,8 @@ class Heater(threading.Thread):
         i = 0
         while not self._pid.is_fixed():
             if i % 8 == 0:
-                logging.info("Heating... current temperature {} C, power {}%"
-                             .format(self._measure(), int(self._current_power)))
+                logging.info("Heating... current temperature {} C, power {}%".
+                             format(self._measure(), int(self._current_power)))
                 i = 0
             i += 1
             time.sleep(0.25)

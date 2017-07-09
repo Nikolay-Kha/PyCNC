@@ -220,8 +220,8 @@ class GMachine(object):
         logging.info("Moving circularly {} {} {} with radius {}"
                      " and velocity {}".format(self._plane, circle_end,
                                                direction, radius, velocity))
-        gen = PulseGeneratorCircular(circle_end, radius, self._plane, direction,
-                                     velocity)
+        gen = PulseGeneratorCircular(circle_end, radius, self._plane,
+                                     direction, velocity)
         self.__check_velocity(gen.max_velocity())
         # if finish coords is not on circle, move some distance linearly
         linear_delta = delta - circle_end
@@ -411,6 +411,8 @@ class GMachine(object):
             self._spindle(0)
         elif c == 'M2' or c == 'M30':  # program finish, reset everything.
             self.reset()
+        elif c == 'M84':  # disable motors
+            hal.disable_steppers()
         # extruder and bed heaters control
         elif c == 'M104' or c == 'M109' or c == 'M140' or c == 'M190':
             if c == 'M104' or c == 'M109':
@@ -453,7 +455,7 @@ class GMachine(object):
             hal.join()
             p = self.position()
             answer = "X:{} Y:{} Z:{} E:{}".format(p.x, p.y, p.z, p.e)
-        elif c is None:  # command not specified(for example, just F was passed)
+        elif c is None:  # command not specified(ie just F was passed)
             pass
         # commands below are added just for compatibility
         elif c == 'M82':  # absolute mode for extruder
@@ -462,8 +464,6 @@ class GMachine(object):
         elif c == 'M83':  # relative mode for extruder
             if self._absoluteCoordinates:
                 raise GMachineException("Not supported, use G90/G91")
-        elif c == 'M84':  # disable motors
-            pass  # do not do anything
         else:
             raise GMachineException("unknown command")
         # save parameters on success

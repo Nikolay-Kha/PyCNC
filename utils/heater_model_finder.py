@@ -10,8 +10,8 @@ from cnc.hal_raspberry import hal
 
 
 """
-This executable module is looking for heating and cooling transfer coefficients.
-Can be ran only on real hardware.
+This executable module is looking for heating and cooling transfer
+coefficients. Can be ran only on real hardware.
 """
 
 # change settings below for your hardware/environment

@@ -78,7 +78,8 @@ class TestGMachine(unittest.TestCase):
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G1X1F-1"))
         cl = "G1X1F" + str(MIN_VELOCITY_MM_PER_MIN - 0.0000001)
-        self.assertRaises(GMachineException, m.do_command, GCode.parse_line(cl))
+        self.assertRaises(GMachineException, m.do_command,
+                          GCode.parse_line(cl))
         m.do_command(GCode.parse_line("G1X100F"
                                       + str(MAX_VELOCITY_MM_PER_MIN_X)))
         m.do_command(GCode.parse_line("G1Y100F"
@@ -120,7 +121,8 @@ class TestGMachine(unittest.TestCase):
                           m.do_command, GCode.parse_line("G2X99999999Y99999999"
                                                          "I1J1"))
         self.assertRaises(GMachineException,
-                          m.do_command, GCode.parse_line("G2X2Y2Z99999999I1J1"))
+                          m.do_command,
+                          GCode.parse_line("G2X2Y2Z99999999I1J1"))
         self.assertEqual(m.position(), Coordinates(0, 0, 0, 0))
         self.assertRaises(GMachineException,
                           m.do_command, GCode.parse_line("G2X4Y4I2J2"))
@@ -250,9 +252,9 @@ class TestGMachine(unittest.TestCase):
         self.assertEqual(m.extruder_target_temperature(), 0)
         self.assertRaises(GMachineException, m.do_command,
                           GCode.parse_line("M104S"+str(MIN_TEMPERATURE - 1)))
+        et = EXTRUDER_MAX_TEMPERATURE + 1
         self.assertRaises(GMachineException, m.do_command,
-                          GCode.parse_line("M109S"
-                                           + str(EXTRUDER_MAX_TEMPERATURE + 1)))
+                          GCode.parse_line("M109S" + str(et)))
         self.assertRaises(GMachineException, m.do_command,
                           GCode.parse_line("M109"))
 

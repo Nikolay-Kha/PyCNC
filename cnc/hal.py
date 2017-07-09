@@ -51,6 +51,13 @@
 #        """
 #        return measure()
 #
+#
+#    def disable_steppers():
+#        """ Disable all steppers until any movement occurs.
+#        """
+#        do_something()
+#
+#
 #    def calibrate(x, y, z):
 #        """ Move head to home position till end stop switch will be triggered.
 #        Do not return till all procedures are completed.
@@ -60,6 +67,7 @@
 #        :return: boolean, True if all specified end stops were triggered.
 #        """
 #        return do_something()
+#
 #
 #    def move(generator):
 #        """ Move head to according pulses in PulseGenerator.
@@ -103,6 +111,8 @@ if 'get_extruder_temperature' not in locals():
     raise NotImplementedError("hal.get_extruder_temperature() not implemented")
 if 'get_bed_temperature' not in locals():
     raise NotImplementedError("hal.get_bed_temperature() not implemented")
+if 'disable_steppers' not in locals():
+    raise NotImplementedError("hal.disable_steppers() not implemented")
 if 'calibrate' not in locals():
     raise NotImplementedError("hal.calibrate() not implemented")
 if 'move' not in locals():

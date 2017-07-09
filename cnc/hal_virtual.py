@@ -62,6 +62,12 @@ def get_bed_temperature():
     return BED_MAX_TEMPERATURE * 0.999
 
 
+def disable_steppers():
+    """ Disable all steppers until any movement occurs.
+    """
+    logging.info("hal disable steppers")
+
+
 def calibrate(x, y, z):
     """ Move head to home position till end stop switch will be triggered.
     Do not return till all procedures are completed.

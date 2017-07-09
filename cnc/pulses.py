@@ -609,9 +609,10 @@ class PulseGeneratorCircular(PulseGenerator):
     def __circular_a(self, i, pulses_per_mm):
         if i >= self._iterations_a:
             return self._dir_a, None
-        a, direction, side = self.__circular_helper(self._start_a_pulses, i + 1,
-                                                    self._radius_a_pulses,
-                                                    self._side_a, self._dir_a)
+        a, direction, side = \
+            self.__circular_helper(self._start_a_pulses, i + 1,
+                                   self._radius_a_pulses,
+                                   self._side_a, self._dir_a)
         a /= pulses_per_mm
         # first and last item can be slightly out of bound due float precision
         if i + 1 == self._iterations_a:
@@ -624,9 +625,10 @@ class PulseGeneratorCircular(PulseGenerator):
     def __circular_b(self, i, pulses_per_mm):
         if i >= self._iterations_b:
             return self._dir_b, None
-        b, direction, side = self.__circular_helper(self._start_b_pulses, i + 1,
-                                                    self._radius_b_pulses,
-                                                    self._side_b, self._dir_b)
+        b, direction, side = \
+            self.__circular_helper(self._start_b_pulses, i + 1,
+                                   self._radius_b_pulses,
+                                   self._side_b, self._dir_b)
         b /= pulses_per_mm
         # first and last item can be slightly out of bound due float precision
         if i + 1 == self._iterations_b:

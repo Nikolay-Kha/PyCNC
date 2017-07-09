@@ -35,10 +35,12 @@ def init():
     gpio.init(FAN_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(EXTRUDER_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(BED_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.init(STEPPERS_ENABLE_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.clear(SPINDLE_PWM_PIN)
     gpio.clear(FAN_PIN)
     gpio.clear(EXTRUDER_HEATER_PIN)
     gpio.clear(BED_HEATER_PIN)
+    gpio.clear(STEPPERS_ENABLE_PIN)
 
 
 def spindle_control(percent):
@@ -97,6 +99,13 @@ def get_bed_temperature():
     :return: temperature in Celsius.
     """
     return thermistor.get_temperature(BED_TEMPERATURE_SENSOR_CHANNEL)
+
+
+def disable_steppers():
+    """ Disable all steppers until any movement occurs.
+    """
+    logging.info("disable steppers")
+    gpio.set(STEPPERS_ENABLE_PIN)
 
 
 def __calibrate_private(x, y, z, invert):
@@ -190,6 +199,8 @@ def calibrate(x, y, z):
     :param z: boolean, True to calibrate Z axis.
     :return: boolean, True if all specified end stops were triggered.
     """
+    # enable steppers
+    gpio.clear(STEPPERS_ENABLE_PIN)
     logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
     if not __calibrate_private(x, y, z, True):  # move from endstop switch
         return False
@@ -206,6 +217,8 @@ def move(generator):
     # moving. In this case machine would safely paused between commands until
     # calculation is done.
 
+    # enable steppers
+    gpio.clear(STEPPERS_ENABLE_PIN)
     # 4 control blocks per 32 bytes
     bytes_per_iter = 4 * dma.control_block_size()
     # prepare and run dma
@@ -309,6 +322,7 @@ def deinit():
     """ De-initialize hardware.
     """
     join()
+    disable_steppers()
     pwm.remove_all()
     gpio.clear(SPINDLE_PWM_PIN)
     gpio.clear(FAN_PIN)

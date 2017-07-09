@@ -32,8 +32,9 @@ Video demo - [YouTube video](https://youtu.be/vcedo59raS4)
 
 # Current gcode support
 Commands G0, G1, G2, G3, G4, G17, G18, G19, G20, G21, G28, G53, G90, G91, G92,
-M2, M3, M5, M30, M104, M105, M106, M107, M109, M114, M140, M190 are supported.
-Commands can be easily added, see [gmachine.py](./cnc/gmachine.py) file.  
+M2, M3, M5, M30, M84, M104, M105, M106, M107, M109, M114, M140, M190 are
+supported. Commands can be easily added, see [gmachine.py](./cnc/gmachine.py)
+file.
 Four axis are supported - X, Y, Z, E.  
 Circular interpolation for XY, ZX, YZ planes is supported.  
 Spindle with rpm control is supported.  

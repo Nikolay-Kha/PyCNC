@@ -64,8 +64,8 @@ class TestHeater(unittest.TestCase):
     def test_fail(self):
         # check if heater will not fix with incorrect temperature
         self._control_counter = 0
-        he = Heater(self._target_temp, EXTRUDER_PID, self.__get_bad_temperature,
-                    self.__control)
+        he = Heater(self._target_temp, EXTRUDER_PID,
+                    self.__get_bad_temperature, self.__control)
         j = 0
         while self._control_counter < 10:
             time.sleep(0.01)

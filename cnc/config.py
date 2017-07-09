@@ -52,6 +52,8 @@ BED_PID = {"P": 5.06820175723,
 # -----------------------------------------------------------------------------
 # Pins configuration.
 
+# Enable pin for all steppers, low level is enabled.
+STEPPERS_ENABLE_PIN = 26
 STEPPER_STEP_PIN_X = 16
 STEPPER_STEP_PIN_Y = 20
 STEPPER_STEP_PIN_Z = 21
