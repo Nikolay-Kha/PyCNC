@@ -46,7 +46,39 @@ properties, limitations and pin names for hardware control.
 Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
 stepper motor drivers with DIR and STEP pin inputs.
 Default config is created for Raspberry Pi 2-3 and this wiring diagram:
-![](https://cloud.githubusercontent.com/assets/8740775/26024664/bc13d5a6-37de-11e7-98ed-9391109fcfd0.jpg)  
+
+     TODO TODO TODO
+gpio21 - x step
+gpio20 - x dir
+gpio26 - enable
+gpio16 - y step
+gpio19 - y dir
+gpio13 - z dir
+gpio12 - z step
+gpio6  - e1 step
+gpio5  - e1 dir
+gpio7  - e0 dir
+gpio8  - e0 step
+gpio11 - z max
+gpio25 - z min
+gpio9  - y max
+gpio10 - y min
+gpio24 - x max
+gpio23 - x min
+gpio22 - heat bed
+gpio27 - heater 2(or fan)
+gpio18 - heater 1
+gpio17 - not connected
+gpio15 - not connected
+gpio4  - not connected
+gpio14 - not connected
+gpio3  - i2c scl for ads1115
+gpio2  - i2c sda for ads1115
+ads1115 ch0 - heater 2(or not connected)
+ads1115 ch1 - bed
+ads1115 ch2 - heater 1
+ads1115 ch3 - not connected
+
 So having Raspberry Pi connected this way, there is no need to configure
 pin map for project.
 
