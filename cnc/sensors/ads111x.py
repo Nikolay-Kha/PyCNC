@@ -30,7 +30,7 @@ class __I2CDev(object):
         os.write(self._dev, data)
 
     def read(self, n):
-        os.read(self._dev, n)
+        return os.read(self._dev, n)
 
 i2c = __I2CDev()
 
@@ -59,13 +59,13 @@ def measure(channel):
     i2c.write(data)
     # wait for conversion
     while True:
-        i2c.write(data, struct.pack("B", 0x01))
-        if struct.unpack(">H", i2c.read(data, 2))[0] & 0x8000 != 0:
+        i2c.write(struct.pack("B", 0x01))
+        if struct.unpack(">H", i2c.read(2))[0] & 0x8000 != 0:
             break
         time.sleep(0.0001)
     # read result
-    i2c.write(data, struct.pack("B", 0x00))  # conversion register
-    v = struct.unpack(">h", i2c.read(data, 2))[0]
+    i2c.write(struct.pack("B", 0x00))  # conversion register
+    v = struct.unpack(">h", i2c.read(2))[0]
     lock.release()
     return v / 8000.0  # / 32768.0 * 4.096 according to specified range
 
