@@ -45,39 +45,40 @@ All configs are stored in [config.py](./cnc/config.py) and contain hardware
 properties, limitations and pin names for hardware control.  
 Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
 stepper motor drivers with DIR and STEP pin inputs.
-Default config is created for Raspberry Pi 2-3 and this wiring diagram:
+Default config is created for Raspberry Pi 2-3 and this wiring config:
 
-     TODO TODO TODO
-gpio21 - x step
-gpio20 - x dir
-gpio26 - enable
-gpio16 - y step
-gpio19 - y dir
-gpio13 - z dir
-gpio12 - z step
-gpio6  - e1 step
-gpio5  - e1 dir
-gpio7  - e0 dir
-gpio8  - e0 step
-gpio11 - z max
-gpio25 - z min
-gpio9  - y max
-gpio10 - y min
-gpio24 - x max
-gpio23 - x min
-gpio22 - heat bed
-gpio27 - heater 2(uses as fan)
-gpio18 - heater 1
-gpio17 - ser1(not connected)
-gpio15 - ser2(not connected)
-gpio4  - ser3(not connected)
-gpio14 - ser4(not connected)
-gpio3  - i2c scl for ads1115
-gpio2  - i2c sda for ads1115
-ads1115 ch0 - heater 2(not connected)
-ads1115 ch1 - bed
-ads1115 ch2 - heater 1
-ads1115 ch3 - not connected
+|     circuit     |   RPi pin   |   RAMPS pin              |  Note            |
+|-----------------|-------------|--------------------------|------------------|
+|     X step      |   gpio21    |    A0                    |                  |
+|     X dir       |   gpio20    |    A1                    |                  |
+| steppers enable |   gpio26    |    A2, A8, D24, D34, D38 |  all steppers    |
+|     Y step      |   gpio16    |    A6                    |                  |
+|     Y dir       |   gpio19    |    A7                    |                  |
+|     Z dir       |   gpio13    |    D48                   |                  |
+|     Z step      |   gpio12    |    D46                   |                  |
+|     E1 step     |   gpio6     |    D36                   |  reserve         |
+|     E1 dir      |   gpio5     |    D34                   |  reserve         |
+|     E0 dir      |   gpio7     |    D28                   |                  |
+|     E0 step     |   gpio8     |    D26                   |                  |
+|     Z max       |   gpio11    |    D19                   |                  |
+|     Z min       |   gpio25    |    D18                   |                  |
+|     Y max       |   gpio9     |    D15                   |                  |
+|     Y min       |   gpio10    |    D14                   |                  |
+|     X max       |   gpio24    |    D2                    |                  |
+|     X min       |   gpio23    |    D3                    |                  |
+|   heater bed    |   gpio22    |    D8                    |                  |
+|    heater 2     |   gpio27    |    D9                    |  uses for fan    |
+|    heater 1     |   gpio18    |    D10                   |                  |
+|     ser 1       |   gpio17    |    D11                   |  reserve         |
+|     ser 2       |   gpio15    |    D6                    |  reserve         |
+|     ser 3       |   gpio4     |    D5                    |  reserve         |
+|     ser 4       |   gpio14    |    D4                    |  reserve         |
+|    I2C SCL      |   gpio3     |    -                     |  to ads111x      |
+|    I2C SDA      |   gpio2     |    -                     |  to ads111x      |
+|  ads1115 ch0    |   -         |    A15                   |  heater 2 - nc   |
+|  ads1115 ch1    |   -         |    A14                   |  bed sensor      |
+|  ads1115 ch2    |   -         |    A13                   |  extruder sensor |
+|  ads1115 ch3    |   -         |    -                     |  not connected   |
 
 So having Raspberry Pi connected this way, there is no need to configure
 pin map for project.
