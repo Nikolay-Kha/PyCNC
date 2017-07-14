@@ -28,7 +28,7 @@ STEPPER_INVERTED_E = True
 # means zero position.
 ENDSTOP_INVERTED_X = True
 ENDSTOP_INVERTED_Y = True
-ENDSTOP_INVERTED_Z = True
+ENDSTOP_INVERTED_Z = False  # Auto leveler
 
 # Workplace physical size.
 TABLE_SIZE_X_MM = 200
@@ -42,12 +42,12 @@ SPINDLE_MAX_RPM = 10000
 EXTRUDER_MAX_TEMPERATURE = 250
 BED_MAX_TEMPERATURE = 100
 MIN_TEMPERATURE = 40
-EXTRUDER_PID = {"P": 0.0993079964195,
-                "I": 0.00267775053311,
-                "D": 0.267775053311}
-BED_PID = {"P": 5.06820175723,
-           "I": 0.0476413193519,
-           "D": 4.76413193519}
+EXTRUDER_PID = {"P": 0.059161177519,
+                "I": 0.00206217171374,
+                "D": 0.206217171374}
+BED_PID = {"P": 0.226740848076,
+           "I": 0.00323956215053,
+           "D": 0.323956215053}
 
 # -----------------------------------------------------------------------------
 # Pins configuration.

@@ -37,12 +37,12 @@ class GMachine(object):
         hal.init()
 
     def release(self):
-        """ Return machine to original position and free all resources.
+        """ Free all resources.
         """
-        self.safe_zero()
         self._spindle(0)
         for h in self._heaters:
             self._heaters[h].stop()
+        self._fan(False)
         hal.deinit()
 
     def reset(self):
@@ -183,7 +183,7 @@ class GMachine(object):
             pq = q
         return ea, eb
 
-    def _circular(self, delta, radius, velocity, direction):
+    def _move_circular(self, delta, radius, velocity, direction):
         delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
                             1.0 / STEPPER_PULSES_PER_MM_Y,
                             1.0 / STEPPER_PULSES_PER_MM_Z,
@@ -360,9 +360,9 @@ class GMachine(object):
         elif c == 'G1':  # linear interpolation
             self._move_linear(delta, velocity)
         elif c == 'G2':  # circular interpolation, clockwise
-            self._circular(delta, radius, velocity, CW)
+            self._move_circular(delta, radius, velocity, CW)
         elif c == 'G3':  # circular interpolation, counterclockwise
-            self._circular(delta, radius, velocity, CCW)
+            self._move_circular(delta, radius, velocity, CCW)
         elif c == 'G4':  # delay in s
             if not gcode.has('P'):
                 raise GMachineException("P is not specified")
