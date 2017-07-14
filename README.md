@@ -40,6 +40,12 @@ Circular interpolation for XY, ZX, YZ planes is supported.
 Spindle with rpm control is supported.  
 Extruder and bed heaters are supported.
 
+# Hardware
+Currently, this project supports Raspberry Pi 1-3. Developed and tested with
+RPI3. And there is a way to add new boards. See [hal.py](./cnc/hal.py) file.  
+_Note: Current Raspberry Pi implementation uses the same resources as on board
+3.5 mm jack(PWM module), so do not use it. HDMI audio works._
+
 # Config
 All configs are stored in [config.py](./cnc/config.py) and contain hardware
 properties, limitations and pin names for hardware control.  
@@ -47,47 +53,48 @@ Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
 stepper motor drivers with DIR and STEP pin inputs.
 Default config is created for Raspberry Pi 2-3 and this wiring config:
 
-|     circuit     |   RPi pin   |   RAMPS pin              |  Note            |
+|     Circuit     |   RPi pin   |   RAMPS pin              |  Note            |
 |-----------------|-------------|--------------------------|------------------|
-|     X step      |   gpio21    |    A0                    |                  |
-|     X dir       |   gpio20    |    A1                    |                  |
-| steppers enable |   gpio26    |    A2, A8, D24, D34, D38 |  all steppers    |
-|     Y step      |   gpio16    |    A6                    |                  |
-|     Y dir       |   gpio19    |    A7                    |                  |
-|     Z dir       |   gpio13    |    D48                   |                  |
-|     Z step      |   gpio12    |    D46                   |                  |
-|     E1 step     |   gpio6     |    D36                   |  reserve         |
-|     E1 dir      |   gpio5     |    D34                   |  reserve         |
-|     E0 dir      |   gpio7     |    D28                   |                  |
-|     E0 step     |   gpio8     |    D26                   |                  |
-|     Z max       |   gpio11    |    D19                   |                  |
-|     Z min       |   gpio25    |    D18                   |                  |
-|     Y max       |   gpio9     |    D15                   |                  |
-|     Y min       |   gpio10    |    D14                   |                  |
-|     X max       |   gpio24    |    D2                    |                  |
-|     X min       |   gpio23    |    D3                    |                  |
-|   heater bed    |   gpio22    |    D8                    |                  |
-|    heater 2     |   gpio27    |    D9                    |  uses for fan    |
-|    heater 1     |   gpio18    |    D10                   |                  |
-|     ser 1       |   gpio17    |    D11                   |  reserve         |
-|     ser 2       |   gpio15    |    D6                    |  reserve         |
-|     ser 3       |   gpio4     |    D5                    |  reserve         |
-|     ser 4       |   gpio14    |    D4                    |  reserve         |
-|    I2C SCL      |   gpio3     |    -                     |  to ads111x      |
-|    I2C SDA      |   gpio2     |    -                     |  to ads111x      |
+|     X step      |   GPIO21    |    A0                    |                  |
+|     X dir       |   GPIO20    |    A1                    |                  |
+| steppers enable |   GPIO26    |    A2, A8, D24, D34, D38 |  all steppers    |
+|     Y step      |   GPIO16    |    A6                    |                  |
+|     Y dir       |   GPIO19    |    A7                    |                  |
+|     Z dir       |   GPIO13    |    D48                   |                  |
+|     Z step      |   GPIO12    |    D46                   |                  |
+|     E1 step     |   GPIO6     |    D36                   |  reserve         |
+|     E1 dir      |   GPIO5     |    D34                   |  reserve         |
+|     E0 dir      |   GPIO7     |    D28                   |                  |
+|     E0 step     |   GPIO8     |    D26                   |                  |
+|     Z max       |   GPIO11    |    D19                   |                  |
+|     Z min       |   GPIO25    |    D18                   |                  |
+|     Y max       |   GPIO9     |    D15                   |                  |
+|     Y min       |   GPIO10    |    D14                   |                  |
+|     X max       |   GPIO24    |    D2                    |                  |
+|     X min       |   GPIO23    |    D3                    |                  |
+|   heater bed    |   GPIO22    |    D8                    |                  |
+|    heater 2     |   GPIO27    |    D9                    |  uses for fan    |
+|    heater 1     |   GPIO18    |    D10                   |                  |
+|     ser 1       |   GPIO17    |    D11                   |  reserve         |
+|     ser 2       |   GPIO15    |    D6                    |  reserve         |
+|     ser 3       |   GPIO4     |    D5                    |  reserve         |
+|     ser 4       |   GPIO14    |    D4                    |  reserve         |
+|    I2C SCL      |   GPIO3     |    -                     |  to ads111x      |
+|    I2C SDA      |   GPIO2     |    -                     |  to ads111x      |
 |  ads1115 ch0    |   -         |    A15                   |  heater 2 - nc   |
 |  ads1115 ch1    |   -         |    A14                   |  bed sensor      |
 |  ads1115 ch2    |   -         |    A13                   |  extruder sensor |
 |  ads1115 ch3    |   -         |    -                     |  not connected   |
 
 So having Raspberry Pi connected this way, there is no need to configure
-pin map for project.
+pin map for project. [RAMPS v1.4](http://reprap.org/wiki/RAMPS_1.4) board can
+be used for this purpose. Full reference circuit diagram and photos of
+assembled controller(click to enlarge):
+[![circuit_small](https://user-images.githubusercontent.com/8740775/28233810-40773186-6902-11e7-8496-5750babfcf44.jpg)](https://user-images.githubusercontent.com/8740775/28233650-d64060e0-6900-11e7-8605-6475384fd2f7.png)
+[![sample_front_small](https://user-images.githubusercontent.com/8740775/28233812-407820c8-6902-11e7-8de1-35c03509c0e5.jpg)](https://user-images.githubusercontent.com/8740775/28233649-d6402800-6900-11e7-8dca-cd35c8292e0c.jpg)
+[![sample_back_small](https://user-images.githubusercontent.com/8740775/28233879-db96ea1c-6902-11e7-9298-11150476084b.jpg)](https://user-images.githubusercontent.com/8740775/28233648-d63fa0c4-6900-11e7-8fab-2055e035a6cb.jpg)
+[![sample_mounted_small](https://user-images.githubusercontent.com/8740775/28233811-40777e8e-6902-11e7-8899-5991860d182c.jpg)](https://user-images.githubusercontent.com/8740775/28233652-d65f82ea-6900-11e7-9e80-d8b0c9238f95.jpg)
 
-# Hardware
-Currently, this project supports Raspberry Pi 1-3. Developed and tested with
-RPI3. And there is a way to add new boards. See [hal.py](./cnc/hal.py) file.
-_Note: Current Raspberry Pi implementation uses the same resources as on board
-3.5 mm jack(PWM module), so do not use it. HDMI audio works._
 
 # Usage
 Just clone this repo and run `./pycnc` from repo root. It will start in
