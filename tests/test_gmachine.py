@@ -26,13 +26,6 @@ class TestGMachine(unittest.TestCase):
         m.do_command(GCode.parse_line("X3Y4Z5E6"))
         self.assertEqual(m.position(), Coordinates(3, 4, 5, 6))
 
-    def test_release(self):
-        # release homes head.
-        m = GMachine()
-        m.do_command(GCode.parse_line("X1Y2Z3E4"))
-        m.release()
-        self.assertEqual(m.position(), Coordinates(0, 0, 0, 4))
-
     def test_safe_zero(self):
         m = GMachine()
         m.do_command(GCode.parse_line("X1Y2Z3E4"))
