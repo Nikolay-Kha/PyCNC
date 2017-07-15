@@ -28,7 +28,8 @@ Python is not good choice for real time application, but since project just
 needs to set up DMA buffers and hardware will do the rest, Python become the
 perfect choice for easy development of this project.
 
-Video demo - [YouTube video](https://youtu.be/vcedo59raS4)
+Video demo - [YouTube video](https://youtu.be/41wdmmztTNA)  
+And the original video when PyCNC was just a prototype [YouTube video](https://youtu.be/vcedo59raS4)
 
 # Current gcode support
 Commands G0, G1, G2, G3, G4, G17, G18, G19, G20, G21, G28, G53, G90, G91, G92,

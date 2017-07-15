@@ -9,7 +9,7 @@ except(IOError, ImportError):
 from setuptools import setup, find_packages
 setup(
     name="pycnc",
-    version="0.1.3",
+    version="1.0.0",
     packages=find_packages(),
     scripts=['pycnc'],
 
@@ -22,4 +22,3 @@ setup(
     keywords="CNC 3D printer robot raspberry pi",
     url="https://github.com/Nikolay-Kha/PyCNC",
 )
-
