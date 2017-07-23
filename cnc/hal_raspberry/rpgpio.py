@@ -387,8 +387,8 @@ class DMAWatchdog(DMAProto):
                 0, ba + self._DMA_CONTROL_BLOCK_SIZE, 0, 0
             )
             ba += self._DMA_CONTROL_BLOCK_SIZE
-        # The last block writes zero(switch to input state) in GPIO's FSEL
-        # register in normal operating, should never be called, until watchdog
+        # The last block writes zeros(switches to input state) in GPIO's FSEL
+        # registers. In normal operating should never be called until watchdog
         # timeout is reached.
         data += (
             DMA_TI_NO_WIDE_BURSTS | DMA_TI_WAIT_RESP | DMA_TI_DEST_INC,
