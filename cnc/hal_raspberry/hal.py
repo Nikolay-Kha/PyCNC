@@ -10,6 +10,7 @@ US_IN_SECONDS = 1000000
 gpio = rpgpio.GPIO()
 dma = rpgpio.DMAGPIO()
 pwm = rpgpio.DMAPWM()
+watchdog = rpgpio.DMAWatchdog()
 
 STEP_PIN_MASK_X = 1 << STEPPER_STEP_PIN_X
 STEP_PIN_MASK_Y = 1 << STEPPER_STEP_PIN_Y
@@ -41,6 +42,7 @@ def init():
     gpio.clear(EXTRUDER_HEATER_PIN)
     gpio.clear(BED_HEATER_PIN)
     gpio.clear(STEPPERS_ENABLE_PIN)
+    watchdog.start()
 
 
 def spindle_control(percent):
@@ -328,3 +330,10 @@ def deinit():
     gpio.clear(FAN_PIN)
     gpio.clear(EXTRUDER_HEATER_PIN)
     gpio.clear(BED_HEATER_PIN)
+    watchdog.stop()
+
+
+def watchdog_feed():
+    """ Feed hardware watchdog.
+    """
+    watchdog.feed()

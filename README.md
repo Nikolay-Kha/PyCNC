@@ -31,15 +31,25 @@ perfect choice for easy development of this project.
 Video demo - [YouTube video](https://youtu.be/41wdmmztTNA)  
 And the original video when PyCNC was just a prototype [YouTube video](https://youtu.be/vcedo59raS4)
 
-# Current gcode support
-Commands G0, G1, G2, G3, G4, G17, G18, G19, G20, G21, G28, G53, G90, G91, G92,
+# Current gcode and features support
+* Commands G0, G1, G2, G3, G4, G17, G18, G19, G20, G21, G28, G53, G90, G91, G92,
 M2, M3, M5, M30, M84, M104, M105, M106, M107, M109, M114, M140, M190 are
 supported. Commands can be easily added, see [gmachine.py](./cnc/gmachine.py)
 file.
-Four axis are supported - X, Y, Z, E.  
-Circular interpolation for XY, ZX, YZ planes is supported.  
-Spindle with rpm control is supported.  
-Extruder and bed heaters are supported.
+* Four axis are supported - X, Y, Z, E.
+* Circular interpolation for XY, ZX, YZ planes is supported.
+* Spindle with rpm control is supported.
+* Extruder and bed heaters are supported.
+* Hardware watchdog.
+
+# Watchdog
+PyCNC uses one of DMA channels as hardware watchdog for safety purpose. If
+board, OS or PyCNC hangs this watchdog should disable all GPIO pins(by
+switching them into input state, for RPi this would be GPIO0-29) in 15 seconds.
+Since there is a high current and dangerous devices like heated bed, extruder
+heater, this feature should prevent uncontrollable overheating. But don't count
+on such software features too much, they can hang too or output MOSFET become
+shorted, use hardware protection like thermal cutoff switches in your machines.
 
 # Hardware
 Currently, this project supports Raspberry Pi 1-3. Developed and tested with

@@ -86,6 +86,14 @@
 #        """ De-initialise hal, stop any hardware.
 #        """
 #        do_something()
+#
+#
+#    def watchdog_feed():
+#        """ Feed hardware watchdog. This method should be called at least
+#        once in 15 seconds. Also, this method can do no operation in hal
+#        implementation and there will not be emergency stop for heaters.
+#        """
+#        do_something()
 
 
 # check which module to import
@@ -121,3 +129,5 @@ if 'join' not in locals():
     raise NotImplementedError("hal.join() not implemented")
 if 'deinit' not in locals():
     raise NotImplementedError("hal.deinit() not implemented")
+if 'watchdog_feed' not in locals():
+    raise NotImplementedError("hal.watchdog_feed() not implemented")

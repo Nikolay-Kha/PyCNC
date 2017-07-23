@@ -6,6 +6,7 @@ from cnc.pulses import *
 from cnc.coordinates import *
 from cnc.heater import *
 from cnc.enums import *
+from cnc.watchdog import *
 
 
 class GMachineException(Exception):
@@ -35,6 +36,7 @@ class GMachine(object):
         self._heaters = dict()
         self.reset()
         hal.init()
+        self.watchdog = HardwareWatchdog()
 
     def release(self):
         """ Free all resources.

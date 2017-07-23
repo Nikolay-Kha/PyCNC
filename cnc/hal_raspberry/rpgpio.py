@@ -82,6 +82,7 @@ class GPIO(object):
 # clock for delay). So, do not create two or more instances of DMAGPIO.
 class DMAGPIO(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
+    _DMA_CHANNEL = 4
 
     def __init__(self):
         """ Create object which control GPIO pins via DMA(Direct Memory
@@ -93,7 +94,7 @@ class DMAGPIO(DMAProto):
             otherwise memory will be unlocked and it could be overwritten by
             operating system.
         """
-        super(DMAGPIO, self).__init__(30 * 1024 * 1024, 4)
+        super(DMAGPIO, self).__init__(30 * 1024 * 1024, self._DMA_CHANNEL)
         self.__current_address = 0
 
         # get helpers registers, this class uses PWM module to create precise
@@ -259,6 +260,7 @@ class DMAPWM(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
     _DMA_DATA_OFFSET = 24
     _TOTAL_NUMBER_OF_BLOCKS = 256
+    _DMA_CHANNEL = 14
 
     def __init__(self):
         """ Initialise PWM. PWM has 8 bit resolution and fixed frequency
@@ -273,7 +275,8 @@ class DMAPWM(DMAProto):
             Cycles in info field of control blocks.
         """
         super(DMAPWM, self).__init__(self._TOTAL_NUMBER_OF_BLOCKS
-                                     * self._DMA_CONTROL_BLOCK_SIZE, 14)
+                                     * self._DMA_CONTROL_BLOCK_SIZE,
+                                     self._DMA_CHANNEL)
         self._clear_pins = dict()
         # first control block always set pins
         self.__add_control_block(0, GPIO_SET_OFFSET)
@@ -354,6 +357,57 @@ class DMAPWM(DMAProto):
         for pin in pins_list:
             self.remove_pin(pin)
         assert len(self._clear_pins) == 0
+
+
+class DMAWatchdog(DMAProto):
+    _DMA_CONTROL_BLOCK_SIZE = 32
+    _DMA_CHANNEL = 13
+    _DMA_BLOCKS = 2047
+
+    def __init__(self):
+        """ Initialize hardware watchdog timer.
+        """
+        super(DMAWatchdog, self).__init__(self._DMA_CONTROL_BLOCK_SIZE
+                                          * (self._DMA_BLOCKS + 1),
+                                          self._DMA_CHANNEL)
+
+    def start(self):
+        """ Arm watchdog for ~15 seconds. If watchdog wasn't fed in 15 seconds,
+        GPIO pins 0-29 will be switched to input to prevent any output from
+        them.
+        """
+        data = ()
+        ba = self._phys_memory.get_bus_address()
+        # first blocks is just a delay
+        for _ in range(0, self._DMA_BLOCKS):
+            data += (
+                DMA_TI_NO_WIDE_BURSTS | DMA_DEST_IGNORE | DMA_TI_WAIT_RESP
+                | DMA_TI_WAITS(31),
+                ba + 24, ba + 28, 65535,
+                0, ba + self._DMA_CONTROL_BLOCK_SIZE, 0, 0
+            )
+            ba += self._DMA_CONTROL_BLOCK_SIZE
+        # The last block writes zero(switch to input state) in GPIO's FSEL
+        # register in normal operating, should never be called, until watchdog
+        # timeout is reached.
+        data += (
+            DMA_TI_NO_WIDE_BURSTS | DMA_TI_WAIT_RESP | DMA_TI_DEST_INC,
+            ba + 24, PHYSICAL_GPIO_BUS + GPIO_FSEL_OFFSET, 12,
+            0, 0, 0, 0
+        )
+        self._phys_memory.write(0, str(len(data)) + "I", data)
+        super(DMAWatchdog, self)._run_dma()
+
+    def stop(self):
+        """ Disarm watchdog.
+        """
+        super(DMAWatchdog, self)._stop_dma()
+
+    def feed(self):
+        """ Feed watchdog, restart waiting loop from the very beginning.
+        """
+        self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_NEXTCONBK,
+                            self._phys_memory.get_bus_address())
 
 
 # for testing purpose

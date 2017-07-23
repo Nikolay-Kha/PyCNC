@@ -196,3 +196,9 @@ def deinit():
     """ De-initialise.
     """
     logging.info("hal deinit()")
+
+
+def watchdog_feed():
+    """ Feed hardware watchdog.
+    """
+    pass
