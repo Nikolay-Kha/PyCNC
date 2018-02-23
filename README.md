@@ -68,7 +68,7 @@ Default config is created for Raspberry Pi 2-3 and this wiring config:
 |-----------------|--------------|--------------------------|-----------------|
 | X step          | GPIO21       | A0                       |                 |
 | X dir           | GPIO20       | A1                       |                 |
-| steppers enable | GPIO26       | A2, A8, D24, D34, D38    | all steppers    |
+| steppers enable | GPIO26       | A2, A8, D24, D30, D38    | all steppers    |
 | Y step          | GPIO16       | A6                       |                 |
 | Y dir           | GPIO19       | A7                       |                 |
 | Z dir           | GPIO13       | D48                      |                 |
