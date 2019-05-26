@@ -9,6 +9,12 @@ import cnc.logging_config as logging_config
 from cnc.gcode import GCode, GCodeException
 from cnc.gmachine import GMachine, GMachineException
 
+
+# Interpreter Version
+print('Python Interpreter Version:', sys.version)
+print()
+
+
 try:  # python3 compatibility
     type(raw_input)
 except NameError:
@@ -70,3 +76,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+

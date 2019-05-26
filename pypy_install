@@ -1,0 +1,10 @@
+wget wget https://bitbucket.org/pypy/pypy/downloads/pypy2-v5.7.1-linux-armhf-raspbian.tar.bz2
+sudo mkdir /opt/pypy
+sudo tar xvf pypy2-v5.7.1-linux-armhf-raspbian.tar.bz2 --directory /opt/pypy/ --strip-components=1
+sudo ln -s /opt/pypy/bin/pypy /usr/local/bin/pypy
+
+
+Nothing for runtime. Just pure Python code. For uploading to PyPi there is a need in pandoc:
+
+sudo dnf install pandoc
+sudo pip install pypandoc

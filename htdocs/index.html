@@ -1,0 +1,203 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content = "height = device-height, width = 420, user-scalable = no" /> 
+	<title>PyCNC Web Interface</title>
+	<h1 align="center">PyCNC Web Interface</h1>
+	<script type="text/javascript" src="/webiopi.js"></script>
+	<style type="text/css">
+		button {
+			display: block;
+			margin: 5px 5px 5px 5px;
+			width: 200px;
+			height: 45px;
+			font-size: 10pt;
+			font-weight: bold;
+			color: black;
+		}
+
+		input[type="range"] {
+			display: block;
+			width: 300px;
+			height: 45px;
+		}
+
+		.LOW {
+			background-color: White;
+		}
+
+		.HIGH {
+			background-color: Green;
+		}
+
+		#onoffdiv {
+			border-radius: 25px;
+			border: 2px solid #F0A321;
+			padding: 20px;
+			width: 310px;
+			margin: 5px;
+			<!--height: 150px;-->
+		}
+
+		#pwmdiv {
+			border-radius: 25px;
+			border: 2px solid #73AD21;
+			padding: 20px;
+			width: 310px;
+			margin: 5px;
+			<!--height: 150px;-->
+		}
+
+		#gcodediv {
+			border-radius: 25px;
+			border: 2px solid #00ffff;
+			padding: 20px;
+			width: 310px;
+			margin: 5px;
+			<!--height: 150px;-->
+		}
+
+	</style>
+</head>
+<body>
+<div id="content" align="center">
+	<script type="text/javascript">
+
+	// Following function will process data received from send_gcode macro
+	webiopi().ready(function() {
+		init();
+
+		var updateResultCallback = function(macro, args, response) {
+			document.getElementById('result_id').value += "\n" + response;
+		}
+
+
+		function init() {
+			var button;
+
+			button = webiopi().createButton("bt_pwm", "On Off Mode", go_on_off);
+			$("#onoffdiv").append(button);
+
+			button = webiopi().createButton("bt_1", "1 Blink  Z=0", go_1);
+			$("#onoffdiv").append(button);
+
+			button = webiopi().createButton("bt_2", "2 Blinks Z=10mm", go_2);
+			$("#onoffdiv").append(button);
+
+			button = webiopi().createButton("bt_3", "3 Blinks Z=20mm", go_3);
+			$("#onoffdiv").append(button);
+
+			webiopi().setFunction(25, "out");
+
+			// create a "LED" labeled button for GPIO 25
+			button = webiopi().createGPIOButton(25, "LED1");
+			$("#onoffdiv").append(button); // append button to content div
+
+			// create a button that output a single pulse
+			button = webiopi().createPulseButton("pulse", "Pulse", 25);
+			$("#onoffdiv").append(button); // append button to content div
+
+			// you can also create a button which calls a different function for mouse down and up events
+			button = webiopi().createButton("hold", "Hold", mousedown, mouseup);
+			$("#onoffdiv").append(button);
+
+			// create a button which output a bit sequence on GPIO 25 with a 100ms period
+			button = webiopi().createSequenceButton("sos", "S.O.S 1", 25, 100, "01010100110011001100101010");
+			$("#onoffdiv").append(button); // append button to content div
+
+			// create a button which call myMacroWithoutArgs
+			button = webiopi().createMacroButton("macro", "6 blinks", "myMacroWithArgs", 6);
+			$("#onoffdiv").append(button); // append button to content div
+
+
+			// PWM Section
+			button = webiopi().createButton("bt_pwm", "PWM Mode", go_pwm);
+			$("#pwmdiv").append(button);
+
+			slider = webiopi().createRatioSlider(25, 0.5);
+			$("#pwmdiv").append(slider);
+
+
+			//GCODE Section
+			button = webiopi().createButton("bt_gcode", "Send G-Code", go_gcode);
+			$("#gcodeinput").append(button);
+
+
+            //Bind gcode_id to Return key event to send GCODE
+            var el = document.getElementById("gcode_id");
+            el.onkeydown = function(evt) {
+                evt = evt || window.event;
+                //alert("keydown: " + evt.keyCode);
+                if (evt.keyCode==13) {
+                    txt = document.getElementById('gcode_id').value;
+                    webiopi().callMacro("send_gcode", txt, updateResultCallback);
+                }
+            };
+
+
+			webiopi().refreshGPIO(true);
+		}
+
+		function go_1() {
+			webiopi().callMacro("go_1");
+		}
+
+		function go_2() {
+			webiopi().callMacro("go_2");
+		}
+
+		function go_3() {
+			webiopi().callMacro("go_3");
+		}
+
+		function mousedown() {
+			webiopi().digitalWrite(25, 1);
+		}
+
+		function mouseup() {
+			webiopi().digitalWrite(25, 0);
+		}
+
+		function go_pwm() {
+			// webiopi().setFunction(25, "pwm");
+			// webiopi().pulseRatio(25, button.value);
+			webiopi().callMacro("pwmMode");
+		}
+
+		function go_on_off() {
+			webiopi().callMacro("onoffMode");
+		}
+
+        function macroCallback(macro, args, data) {
+            alert(macro + " returned with " + data);
+        }
+
+		function go_gcode() {
+			txt = document.getElementById('gcode_id').value;
+			webiopi().callMacro("send_gcode", txt, updateResultCallback);
+		}
+
+
+	})
+
+	//webiopi().ready(init);
+
+
+	</script>
+	<!--This is a comment
+    <img width="320" height="240" src="http://raspberrypi:8001/?action=stream"><br/>-->
+		<div id="onoffdiv"></div>
+		<div id="pwmdiv"></div>
+		<div id="gcodediv">
+            <div id="gcodeinput">
+	    		G-Code:<br>
+                <input type="text" id="gcode_id"value="y10z10" name="gcode" style="width:300px;"></input><br>
+            </div>
+			<br>RESULT:<br>
+            <textarea type="text" cols="20" rows="5" style="width:300px; height:80px;" id="result_id" name="result" value="">
+			</textarea>
+		</div>
+	</div>
+</body>
+</html>

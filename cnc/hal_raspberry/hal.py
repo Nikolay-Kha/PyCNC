@@ -5,6 +5,7 @@ from cnc.pulses import *
 from cnc.config import *
 from cnc.sensors import thermistor
 
+
 US_IN_SECONDS = 1000000
 
 gpio = rpgpio.GPIO()

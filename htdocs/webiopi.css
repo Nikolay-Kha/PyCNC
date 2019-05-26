@@ -1,0 +1,97 @@
+@CHARSET "UTF-8";
+
+body {
+	-webkit-user-select: none;
+	-moz-user-select: none;
+}
+
+button {
+	font-size: 14pt;
+	font-weight: bold;
+	color: white;
+	border: black 3px solid;
+	width: 40px;
+	height: 30px;
+	padding: 0 0 0 0;
+}
+
+input[type="range"] {
+	-webkit-appearance: slider-horizontal;
+}
+
+.Default {
+	background-color: Gray;
+}
+
+.Default:active {
+	background-color: Silver;
+}
+
+.DNC {
+	background-color: Gray;
+}
+
+.GND {
+	background-color: Black;
+}
+
+.V33 {
+	background-color: Orange;
+}
+
+.V50 {
+	background-color: Red;
+}
+
+.LOW {
+	background-color: Black;
+}
+
+.HIGH {
+	background-color: Orange;
+}
+
+.I2C {
+	background-color: LightBlue;
+}
+
+.SPI {
+	background-color: Purple;
+}
+
+.UART {
+	background-color: DarkBlue;
+}
+
+.ONEWIRE {
+	background-color: Blue;
+}
+
+.FunctionBasic {
+	width: 60px;
+	background-color: Gray;
+}
+
+.FunctionSpecial {
+	width: 60px;
+	visibility: hidden;
+}
+
+.Description {
+	font-size: 12pt;
+	font-weight: bold;
+	width: 90px;
+}
+
+#update {
+	position: absolute;
+	top: 16px;
+	right: 12px;
+}
+
+#update > a {
+	font-family: sans-serif;
+	font-size: 12pt;
+	font-weight: bold;
+	color: FireBrick;
+}

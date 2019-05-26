@@ -1,6 +1,7 @@
 from __future__ import division
 
 import cnc.logging_config as logging_config
+
 from cnc import hal
 from cnc.pulses import *
 from cnc.coordinates import *
@@ -8,11 +9,11 @@ from cnc.heater import *
 from cnc.enums import *
 from cnc.watchdog import *
 
-
 class GMachineException(Exception):
     """ Exceptions while processing gcode line.
     """
     pass
+
 
 
 class GMachine(object):
@@ -37,6 +38,8 @@ class GMachine(object):
         self.reset()
         hal.init()
         self.watchdog = HardwareWatchdog()
+
+
 
     def release(self):
         """ Free all resources.
@@ -98,9 +101,10 @@ class GMachine(object):
 
     def __check_delta(self, delta):
         pos = self._position + delta
-        if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
-                              Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
-                                          TABLE_SIZE_Z_MM, 0)):
+        if not pos.is_in_aabb(
+                               Coordinates(TABLE_SIZE_X_MIN_MM, TABLE_SIZE_Y_MIN_MM, TABLE_SIZE_Z_MIN_MM, TABLE_SIZE_E_MIN_MM),
+                               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,TABLE_SIZE_Z_MM, TABLE_SIZE_E_MM)
+                              ):
             raise GMachineException("out of effective area")
 
     # noinspection PyMethodMayBeStatic
@@ -470,6 +474,22 @@ class GMachine(object):
         elif c == 'M83':  # relative mode for extruder
             if self._absoluteCoordinates:
                 raise GMachineException("Not supported, use G90/G91")
+
+        elif c == 'H0':
+            help_message = 'Help' + '\n'
+            help_message += '\n'
+            help_message += '           X[x.x] Y[y.y] Z[z.z] E[e.e]' + '\n'
+            help_message += '           G0  X|Y|Z|E  = Rapid Move' + '\n'
+            help_message += '           G1  X|Y|Z|E  = Linear Move' + '\n'
+            help_message += '           G2  X|Y|Z|E  = Circular Move' + '\n'
+            help_message += '           G4  Pn       = Delay n seconds' + '\n'
+            help_message += '           G28 X|Y|Z|E  = Home set origin' + '\n'
+            help_message += '           M84          = disable motors' + '\n'
+            help_message += '           M114         = current position' + '\n'
+            help_message += '           F[speed]' + '\n'
+
+            return help_message
+
         else:
             raise GMachineException("unknown command")
         # save parameters on success

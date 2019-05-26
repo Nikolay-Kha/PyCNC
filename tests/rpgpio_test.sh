@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 PASS=raspberry
-ADDRESS=pi@192.168.0.211
+ADDRESS=pi@192.168.1.9
 if [ ! -z $1 ]; then
     if [[ $1 == *"@"* ]]; then
         ADDRESS=$1
