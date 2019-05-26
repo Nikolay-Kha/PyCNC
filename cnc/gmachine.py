@@ -25,6 +25,13 @@ class GMachine(object):
     def __init__(self):
         """ Initialization.
         """
+        self.config()
+
+    def reloadconfig(self):
+        self.release()
+        self.config()
+
+    def config(self):
         self._position = Coordinates(0.0, 0.0, 0.0, 0.0)
         # init variables
         self._velocity = 0
@@ -38,8 +45,6 @@ class GMachine(object):
         self.reset()
         hal.init()
         self.watchdog = HardwareWatchdog()
-
-
 
     def release(self):
         """ Free all resources.

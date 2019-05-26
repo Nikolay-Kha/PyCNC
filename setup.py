@@ -18,16 +18,15 @@ setup(
 
     package_data = {
         # If any package contains *.txt or *.rst files, include them:
-        '': ['*.js', '*.html', '.conf'],
+        '': ['.conf'],
     },
 
     data_files=[
-        ('/cnc/etc/', [os.path.join('extra', 'pycnc.conf')]),
-        ('/cnc/webiopi/', [os.path.join('htdocs', 'index.html'), os.path.join('htdocs', 'jquery.js'), os.path.join('htdocs', 'webiopi.css'),os.path.join('htdocs', 'webiopi.js') ]),
+        ('/cnc/etc/', [os.path.join('extra', 'pycnc.conf')])
     ],
 
     # metadata for upload to PyPI
-    author="Nikolay Khabarov",
+    author="Nikolay Khabarov,Jairo Moreno",
     author_email="2xl@mail.ru",
     description="CNC machine controller",
     long_description=long_description,
