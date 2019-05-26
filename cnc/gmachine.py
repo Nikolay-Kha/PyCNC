@@ -46,6 +46,9 @@ class GMachine(object):
         hal.init()
         self.watchdog = HardwareWatchdog()
 
+    def coordinates(self):
+        return self._position.values()
+
     def release(self):
         """ Free all resources.
         """
