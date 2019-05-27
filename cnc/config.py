@@ -19,10 +19,12 @@ SPINDLE_MAX_RPM = configParser.getint('control', 'spindle_max_rpm')
 TABLE_SIZE_X_MM = configParser.getint('workplace', 'table_size_x_mm')
 TABLE_SIZE_Y_MM = configParser.getint('workplace', 'table_size_y_mm')
 TABLE_SIZE_Z_MM = configParser.getint('workplace', 'table_size_z_mm')
+TABLE_SIZE_E_MM = configParser.getint('workplace', 'table_size_e_mm')
 
 TABLE_SIZE_X_MIN_MM = configParser.getint('workplace', 'table_size_x_min_mm')
 TABLE_SIZE_Y_MIN_MM = configParser.getint('workplace', 'table_size_y_min_mm')
 TABLE_SIZE_Z_MIN_MM = configParser.getint('workplace', 'table_size_z_min_mm')
+TABLE_SIZE_E_MIN_MM = configParser.getint('workplace', 'table_size_e_min_mm')
 
 # Maximum velocity for each axis in millimeter per minute.
 MAX_VELOCITY_MM_PER_MIN_X = configParser.getint('axis', 'max_velocity_mm_per_min_x')
