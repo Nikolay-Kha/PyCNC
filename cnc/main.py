@@ -9,12 +9,6 @@ import cnc.logging_config as logging_config
 from cnc.gcode import GCode, GCodeException
 from cnc.gmachine import GMachine, GMachineException
 
-
-# Interpreter Version
-print('Python Interpreter Version:', sys.version)
-print()
-
-
 try:  # python3 compatibility
     type(raw_input)
 except NameError:
@@ -48,7 +42,7 @@ def do_line(line):
 
 
 def main():
-    logging_config.debug_enable()
+    logging_config.debug_disable()
     try:
         if len(sys.argv) > 1:
             # Read file with gcode

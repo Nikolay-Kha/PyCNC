@@ -99,7 +99,6 @@
 # check which module to import
 try:
     from cnc.hal_raspberry.hal import *
-    print("----- Raspberry Hal Hardware Detected -----")
 except ImportError:
     print("----- Hardware not detected, using virtual environment -----")
     print("----- Use M111 command to enable more detailed debug -----")

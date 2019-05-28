@@ -81,8 +81,6 @@ class GCode(object):
             return 'G' + self.params['G']
         if 'M' in self.params:
             return 'M' + self.params['M']
-        if 'H' in self.params:
-            return 'H' + self.params['H']
         return None
 
     @staticmethod
@@ -97,16 +95,15 @@ class GCode(object):
             return None
         if line[0] == '%':
             return None
-        # noinspection PyTypeChecker
         m = g_pattern.findall(line)
         if not m:
             raise GCodeException('gcode not found')
         if len(''.join(["%s%s" % i for i in m])) != len(line):
             raise GCodeException('extra characters in line')
+        # noinspection PyTypeChecker
         params = dict(m)
         if len(params) != len(m):
             raise GCodeException('duplicated gcode entries')
         if 'G' in params and 'M' in params:
             raise GCodeException('g and m command found')
         return GCode(params)
-

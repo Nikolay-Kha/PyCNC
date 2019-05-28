@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 
-from rpgpio_private import *
-
-#original
-#  from .rpgpio_private import *
-#para testar comentar a linha de cima e colocar:
-#  from rpgpio_private import *
-#correr com:
-#  sudo python3 ./cnc/hal_raspberry/rpgpio.py
+from .rpgpio_private import *
 
 import time
 import logging
@@ -89,17 +82,7 @@ class GPIO(object):
 # clock for delay). So, do not create two or more instances of DMAGPIO.
 class DMAGPIO(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
-
-    #default 4
-    #suggested 3,5,6
-    #may be free, So it should be OK to use channels: 4, 5, 8, 9, 10, 11, 12, 13, 14
-    #This suggests DMA channels 1, 3, 6, 7 and 15 are reserved
-    # 6 ok
-    # 5 ok
-    # 4 ok
-    #8
     _DMA_CHANNEL = 4
-
 
     def __init__(self):
         """ Create object which control GPIO pins via DMA(Direct Memory
