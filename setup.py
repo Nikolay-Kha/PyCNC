@@ -26,7 +26,7 @@ setup(
     ],
 
     # metadata for upload to PyPI
-    author="Nikolay Khabarov,Jairo Moreno",
+    author="Nikolay Khabarov",
     author_email="2xl@mail.ru",
     description="CNC machine controller",
     long_description=long_description,

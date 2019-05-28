@@ -58,7 +58,7 @@ _Note: Current Raspberry Pi implementation uses the same resources as on board
 3.5 mm jack(PWM module), so do not use it. HDMI audio works._
 
 # Config
-All configs are stored in [config.py](./cnc/config.py) and contain hardware
+All configs are stored in /etc/pycnc.conf and contain hardware
 properties, limitations and pin names for hardware control.  
 Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
 stepper motor drivers with DIR and STEP pin inputs.
@@ -112,12 +112,12 @@ interactive terminal mode where gcode commands can be entered manually.
 To run file with gcode commands, just run `./pycnc filename`.  
 Optionally, `pycnc` can be installed. Run
 ```bash
-sudo pip install .
+sudo sudo pip3 install .
 ```
 in repo root directory to install it. After than, `pycnc` command will be added
 to system path. To remove installation, just run:
 ```bash
-sudo pip remove pycnc
+sudo pip3 uninstall pycnc
 ```
 
 # Performance notice
@@ -160,3 +160,4 @@ see [LICENSE](./LICENSE) file.
 # Author
 Nikolay Khabarov
 
+Jairo Moreno - added configuration file
