@@ -38,6 +38,16 @@ class GMachine(object):
         hal.init()
         self.watchdog = HardwareWatchdog()
 
+    def reloadconfig(self):
+        self.release()
+        self.config()
+
+    def config(self):
+        self.__init__()
+
+    def coordinates(self):
+        return self._position.values()
+
     def release(self):
         """ Free all resources.
         """
@@ -98,7 +108,7 @@ class GMachine(object):
 
     def __check_delta(self, delta):
         pos = self._position + delta
-        if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
+        if not pos.is_in_aabb(Coordinates(TABLE_SIZE_X_MIN_MM, TABLE_SIZE_Y_MIN_MM, TABLE_SIZE_Z_MIN_MM, TABLE_SIZE_E_MIN_MM),
                               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
                                           TABLE_SIZE_Z_MM, 0)):
             raise GMachineException("out of effective area")

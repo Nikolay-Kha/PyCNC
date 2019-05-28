@@ -24,6 +24,12 @@ class Coordinates(object):
         return (self.x == 0.0 and self.y == 0.0 and self.z == 0.0
                 and self.e == 0.0)
 
+    def values(self):
+        """ return all values
+        :return: array.
+        """
+        return [self.x , self.y , self.z , self.e]
+
     def is_in_aabb(self, p1, p2):
         """ Check coordinates are in aabb(Axis-Aligned Bounding Box).
             aabb is specified with two points. E is ignored.

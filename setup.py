@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import os.path
+
 try:
     import pypandoc
     long_description = pypandoc.convert('README.md', 'rst')
@@ -12,6 +14,16 @@ setup(
     version="1.1.0",
     packages=find_packages(),
     scripts=['pycnc'],
+    include_package_data=True,
+
+    package_data = {
+        # If any package contains *.txt or *.rst files, include them:
+        '': ['.conf'],
+    },
+
+    data_files=[
+        ('/cnc/etc/', [os.path.join('extra', 'pycnc.conf')])
+    ],
 
     # metadata for upload to PyPI
     author="Nikolay Khabarov",
