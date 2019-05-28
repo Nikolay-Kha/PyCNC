@@ -108,7 +108,7 @@ class GMachine(object):
 
     def __check_delta(self, delta):
         pos = self._position + delta
-        if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
+        if not pos.is_in_aabb(Coordinates(TABLE_SIZE_X_MIN_MM, TABLE_SIZE_Y_MIN_MM, TABLE_SIZE_Z_MIN_MM, TABLE_SIZE_E_MIN_MM),
                               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
                                           TABLE_SIZE_Z_MM, 0)):
             raise GMachineException("out of effective area")
