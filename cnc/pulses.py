@@ -257,30 +257,21 @@ class PulseGeneratorLinear(PulseGenerator):
         distance_mm = abs(delta_mm)  # type: Coordinates
         # velocity of each axis
         distance_total_mm = distance_mm.length()
-        self.max_velocity_mm_per_sec = self._adjust_velocity(distance_mm * (
-            velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm))
+        self.max_velocity_mm_per_sec = self._adjust_velocity(distance_mm * (velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm))
         # acceleration time
-        self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max()
-                                    / STEPPER_MAX_ACCELERATION_MM_PER_S2)
+        self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max() / STEPPER_MAX_ACCELERATION_MM_PER_S2)
         # check if there is enough space to accelerate and brake, adjust time
         # S = a * t^2 / 2
-        if STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
-                > distance_total_mm:
-            self.acceleration_time_s = \
-                math.sqrt(distance_total_mm
-                          / STEPPER_MAX_ACCELERATION_MM_PER_S2)
+        if STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 > distance_total_mm:
+            self.acceleration_time_s = math.sqrt(distance_total_mm / STEPPER_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
             # V = a * t -> V = 2 * S / t, take half of total distance for
             # acceleration and braking
-            self.max_velocity_mm_per_sec = (distance_mm
-                                            / self.acceleration_time_s)
+            self.max_velocity_mm_per_sec = (distance_mm / self.acceleration_time_s)
         else:
             # calculate linear time
-            linear_distance_mm = distance_total_mm \
-                                 - self.acceleration_time_s ** 2 \
-                                 * STEPPER_MAX_ACCELERATION_MM_PER_S2
-            self.linear_time_s = (linear_distance_mm
-                                  / self.max_velocity_mm_per_sec.length())
+            linear_distance_mm = distance_total_mm - self.acceleration_time_s ** 2 * STEPPER_MAX_ACCELERATION_MM_PER_S2
+            self.linear_time_s = (linear_distance_mm / self.max_velocity_mm_per_sec.length())
         self._total_pulses_x = round(distance_mm.x * STEPPER_PULSES_PER_MM_X)
         self._total_pulses_y = round(distance_mm.y * STEPPER_PULSES_PER_MM_Y)
         self._total_pulses_z = round(distance_mm.z * STEPPER_PULSES_PER_MM_Z)

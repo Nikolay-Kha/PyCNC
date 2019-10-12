@@ -1,11 +1,8 @@
 from __future__ import division
 
 import cnc.logging_config as logging_config
-from cnc import hal
-from cnc.pulses import *
-from cnc.coordinates import *
 from cnc.heater import *
-from cnc.enums import *
+from cnc.pulses import *
 from cnc.watchdog import *
 
 
@@ -33,6 +30,12 @@ class GMachine(object):
         self._absoluteCoordinates = 0
         self._plane = None
         self._fan_state = False
+        self._X_direction_changed = False
+        self._X_last_direction_positive = False
+        self._Y_direction_changed = False
+        self._Y_last_direction_positive = False
+        self._Z_direction_changed = False
+        self._Z_last_direction_positive = False
         self._heaters = dict()
         self.reset()
         hal.init()
@@ -121,6 +124,38 @@ class GMachine(object):
         self.__check_delta(delta)
 
         logging.info("Moving linearly {}".format(delta))
+
+        self._X_direction_changed = (self._X_last_direction_positive & delta.x < 0) \
+                                    | ((not self._X_last_direction_positive) & delta.x >= 0)
+        self._Y_direction_changed = (self._Y_last_direction_positive & delta.y < 0) \
+                                    | ((not self._Y_last_direction_positive) & delta.x >= 0)
+        self._Z_direction_changed = (self._Z_last_direction_positive & delta.z < 0) \
+                                    | ((not self._Z_last_direction_positive) & delta.x >= 0)
+
+        current_x_direction_is_positive = delta.x >= 0
+        current_y_direction_is_positive = delta.y >= 0
+        current_z_direction_is_positive = delta.z >= 0
+
+        self._X_last_direction_positive = current_x_direction_is_positive
+        self._Y_last_direction_positive = current_y_direction_is_positive
+        self._Z_last_direction_positive = current_z_direction_is_positive
+
+        logging.debug("wanted to move X {} Y {} Z {}".format(delta.x, delta.y, delta.z))
+
+        if self._X_direction_changed:
+            #                                       F   T If I was negative, but now going positive, go one more, If I was positive and now going negative, go one less
+            delta.x = delta.x + (BACKLASH_COMP_X * (-1, +1)[current_x_direction_is_positive])
+
+        if self._Y_direction_changed:
+            #                                       F   T If I was negative, but now going positive, go one more, If I was positive and now going negative, go one less
+            delta.y = delta.y + (BACKLASH_COMP_Y * (-1, +1)[current_y_direction_is_positive])
+
+        if self._Z_direction_changed:
+            #                                       F   T If I was negative, but now going positive, go one more, If I was positive and now going negative, go one less
+            delta.z = delta.z + (BACKLASH_COMP_Z * (-1, +1)[current_z_direction_is_positive])
+
+        logging.debug("actually going to move X {} Y {} Z {}".format(delta.x, delta.y, delta.z))
+
         gen = PulseGeneratorLinear(delta, velocity)
         self.__check_velocity(gen.max_velocity())
         hal.move(gen)
@@ -432,8 +467,8 @@ class GMachine(object):
                 raise GMachineException("temperature is not specified")
             t = gcode.get('S', 0)
             if ((heater == HEATER_EXTRUDER and t > EXTRUDER_MAX_TEMPERATURE) or
-                    (heater == HEATER_BED and t > BED_MAX_TEMPERATURE) or
-                    t < MIN_TEMPERATURE) and t != 0:
+                (heater == HEATER_BED and t > BED_MAX_TEMPERATURE) or
+                t < MIN_TEMPERATURE) and t != 0:
                 raise GMachineException("bad temperature")
             self._heat(heater, t, wait)
         elif c == 'M105':  # get temperature

@@ -16,6 +16,10 @@ STEPPER_PULSES_PER_MM_Y = 100
 STEPPER_PULSES_PER_MM_Z = 400
 STEPPER_PULSES_PER_MM_E = 150
 
+BACKLASH_COMP_X = 0.002
+BACKLASH_COMP_Y = 0
+BACKLASH_COMP_Z = 0
+
 # Invert axises direction, by default(False) high level means increase of
 # position. For inverted(True) axis, high level means decrease of position.
 STEPPER_INVERTED_X = True
