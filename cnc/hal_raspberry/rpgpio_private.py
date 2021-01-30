@@ -11,12 +11,14 @@ import ctypes
 # https://www.raspberrypi.org/wp-content/uploads/2012/02/BCM2835-ARM-Peripherals.pdf
 RPI1_PERI_BASE = 0x20000000
 RPI2_3_PERI_BASE = 0x3F000000
+RPI4_PERI_BASE = 0xFE000000
 # detect board version
 try:
     with open("/proc/cpuinfo", "r") as f:
         d = f.read()
         r = re.search("^Revision\s+:\s+(.+)$", d, flags=re.MULTILINE)
         h = re.search("^Hardware\s+:\s+(.+)$", d, flags=re.MULTILINE)
+        m = re.search("^Model\s+:\s+(.+)$", d, flags=re.MULTILINE)
         RPI_1_REVISIONS = ['0002', '0003', '0004', '0005', '0006', '0007',
                            '0008', '0009', '000d', '000e', '000f', '0010',
                            '0011', '0012', '0013', '0014', '0015', '900021',
@@ -25,6 +27,8 @@ try:
             raise ImportError("This is not raspberry pi board.")
         elif r.group(1) in RPI_1_REVISIONS:
             PERI_BASE = RPI1_PERI_BASE
+        elif "Pi 4" in m.group(1):
+            PERI_BASE = RPI4_PERI_BASE
         elif "BCM2" in h.group(1):
             PERI_BASE = RPI2_3_PERI_BASE
         else:
